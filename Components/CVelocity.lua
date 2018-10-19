@@ -3,7 +3,8 @@ VelocityComponent = {
 		local ret = {
 			m_vx = 0,
 			m_vy = 0, -- current velocity in x/y direction
-			m_ac = 0 -- acceleration
+			m_acx = 0, -- acceleration
+			m_acy = 0
 		}
 		setmetatable(ret, VelocityComponent)
 		return ret
