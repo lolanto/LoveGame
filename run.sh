@@ -1,0 +1,1 @@
+./Engine/love.app/Contents/MacOS/love ./ --console
