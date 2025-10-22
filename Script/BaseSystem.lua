@@ -23,8 +23,8 @@ end
 ---@param isRequired boolean 是否必须的组件
 ---@return nil
 function BaseSystem:addComponentRequirement(componentInfo, isRequired)
-    local BaseComponent = require('BaseComponent')
-    local cmpInfo2 = BaseComponent.CheckTypeExistence(componentInfo)
+    local MOD_BaseComponent = require('BaseComponent').BaseComponent
+    local cmpInfo2 = MOD_BaseComponent.CheckTypeExistence(componentInfo)
     assert(cmpInfo2 ~= nil, 'Component is not exist!')
     if (type(cmpInfo2) == 'string') then 
         self._requiredComponentInfos[cmpInfo2] = isRequired
@@ -37,8 +37,8 @@ end
 ---@param componentInfo string|number 组件的描述信息，组件名称或者ID
 ---@return nil
 function BaseSystem:removeComponentRequirement(componentInfo)
-    local BaseSystem = require('BaseComponent')
-    local cmpInfo2 = BaseSystem.CheckTypeExistence(componentInfo)
+    local MOD_BaseSystem = require('BaseComponent').BaseComponent
+    local cmpInfo2 = MOD_BaseSystem.CheckTypeExistence(componentInfo)
     assert(cmpInfo2 ~= nil, 'Component is not exist!')
     if (type(cmpInfo2) == 'string') then 
         self._requiredComponentInfos[cmpInfo2] = nil

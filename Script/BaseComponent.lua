@@ -25,10 +25,10 @@ end
 function BaseComponent.RegisterType(typeName)
     assert(type(typeName) == 'string', string.format('Type name using to register should be String! But %s produce', type(typeName)))
     assert(BaseComponent.static.RegisterTypes_nameToID[typeName] == nil, string.format('Their is already registered key %s', typeName))
-    local BaseComponentID = BaseComponent.RegisteredTypeCount
+    local BaseComponentID = BaseComponent.static.RegisteredTypeCount
     BaseComponent.static.RegisterTypes_nameToID[typeName] = BaseComponentID
     BaseComponent.static.RegisterTypes_IDToName[BaseComponentID] = typeName
-    BaseComponent.RegisteredTypeCount = BaseComponent.RegisteredTypeCount + 1
+    BaseComponent.static.RegisteredTypeCount = BaseComponent.static.RegisteredTypeCount + 1
     return BaseComponent.static.RegisterTypes_nameToID[typeName]
 end
 
@@ -79,4 +79,52 @@ function BaseComponent:update(deltaTime)
     -- do nothing
 end
 
-return BaseComponent
+--- 判断当前实例是否是某个类型或其子类型的实例
+--- @param typeInfo string|number 要匹配的类型名或类型ID
+--- @return boolean
+function BaseComponent:isInstanceOf(typeInfo)
+    local targetName = nil
+    if (type(typeInfo) == "number") then
+        targetName = BaseComponent.GetTyepNameFromID(typeInfo)
+    elseif (type(typeInfo) == "string") then
+        targetName = typeInfo
+    else
+        assert(false, 'typeInfo should be string or number!')
+    end
+    -- 从实例的元表开始，沿着类的继承链查找 ComponentTypeName
+    local mt = getmetatable(self)
+    while mt do
+        if mt.ComponentTypeName == targetName then
+            return true
+        end
+        mt = getmetatable(mt)
+    end
+    return false
+end
+
+--- 判断一个类表是否是某个类型或其子类
+--- @param classTable table 要检查的类表
+--- @param typeInfo string|number 要匹配的类型名或类型ID
+--- @return boolean
+function BaseComponent.classIsSubclassOf(classTable, typeInfo)
+    local targetName = nil
+    if (type(typeInfo) == "number") then
+        targetName = BaseComponent.GetTyepNameFromID(typeInfo)
+    elseif (type(typeInfo) == "string") then
+        targetName = typeInfo
+    else
+        return false
+    end
+    local mt = classTable
+    while mt do
+        if mt.ComponentTypeName == targetName then
+            return true
+        end
+        mt = getmetatable(mt)
+    end
+    return false
+end
+
+return {
+    BaseComponent = BaseComponent,
+}

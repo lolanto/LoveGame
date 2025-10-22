@@ -1,0 +1,1 @@
+.\Engine\love.exe .\ --console

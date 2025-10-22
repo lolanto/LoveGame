@@ -15,7 +15,7 @@ function UserInteractController:new()
     return instance
 end
 
----尝试检查请求的组合是否存在
+---尝试检查请求的组合是否存在，通常而言，一个命令可能由一个或者多个用户输入组合而成
 ---@param consumeInfos {string:InteractConsumeInfo}
 ---@return boolean 假如都满足组合要求，返回true，否则返回false
 function UserInteractController:tryToConsumeInteractInfo(consumeInfos)
@@ -34,13 +34,14 @@ function UserInteractController:tryToConsumeInteractInfo(consumeInfos)
     return consumeSucceed
 end
 
----update
+---准备更新下一轮的用户交互信息
 function UserInteractController:preUpdate(deltaTime)
     for key, descObj in pairs(self._interactStates) do
         descObj:preUpdate(deltaTime)
     end
 end
 
+---清理之前的用户交互状态信息
 function UserInteractController:postUpdate()
     for key, descObj in pairs(self._interactStates) do
         descObj:postUpdate()
@@ -50,4 +51,35 @@ end
 -- Callbacks
 
 function UserInteractController:onKeyPressed(key)
+    self._interactStates['key_'..key] = self._interactStates['key_'..key] or require('UserInteractDesc').KeyboardInteractDesc:new()
+    self._interactStates['key_'..key]:setPressed()
 end
+
+function UserInteractController:onKeyReleased(key)
+    self._interactStates['key_'..key] = self._interactStates['key_'..key] or require('UserInteractDesc').KeyboardInteractDesc:new()
+    self._interactStates['key_'..key]:setReleased()
+end
+
+local LoveMouseBottonConstantToStr = {
+    [1] = 'left', -- left
+    [2] = 'right', -- right
+    [3] = 'middle', -- middle
+}
+
+function UserInteractController:onMousePressed(x, y, button)
+    local buttonStr = LoveMouseBottonConstantToStr[button]
+    self._interactStates['mouse_'..buttonStr] = self._interactStates['mouse_'..buttonStr] or require('UserInteractDesc').MouseInteractDesc:new()
+    self._interactStates['mouse_'..buttonStr]:setPressed(x, y)
+end
+
+function UserInteractController:onMouseReleased(x, y, button)
+    local buttonStr = LoveMouseBottonConstantToStr[button]
+    self._interactStates['mouse_'..buttonStr] = self._interactStates['mouse_'..buttonStr] or require('UserInteractDesc').MouseInteractDesc:new()
+    self._interactStates['mouse_'..buttonStr]:setReleased(x, y)
+end
+
+
+return {
+    UserInteractController = UserInteractController,
+}
+

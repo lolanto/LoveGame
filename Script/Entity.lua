@@ -75,14 +75,33 @@ end
 --- @param componentType string|number 要获取的组件的信息，名称或者ID
 --- @return BaseComponent|nil 返回组件对象，或者找不到返回nil
 function Entity:getComponent(componentType)
+    ---@type number
+    local cmpID = nil
+    ---@type string
+    local cmpName = nil
     if (type(componentType) == "number") then
-        return self._components[componentType]
+        cmpID = componentType
+        cmpName = require('BaseComponent').BaseComponent.GetTyepNameFromID(componentType)
+        assert(cmpName ~= nil, string.format('Component type ID %d is not exist', componentType))
     elseif (type(componentType) == "string") then
-        local BaseComponent = require('BaseComponent')
-        local cmpID = BaseComponent.GetTypeIDFromName(componentType)
+        cmpName = componentType
+        cmpID = require('BaseComponent').BaseComponent.GetTypeIDFromName(componentType)
         assert(cmpID ~= nil, string.format('Component type %s is not exist', componentType))
-        return self._components[cmpID]
+    else
+        assert(false, 'Invalid componentType parameter!')
     end
+    -- try exact id first
+    local exact = self._components[cmpID]
+    if exact ~= nil then
+        return exact
+    end
+    -- 如果没有精确匹配，则将这个数字视作父类的ID，查找派生类组件
+    for _, comp in pairs(self._components) do
+        if comp ~= nil and comp:isInstanceOf(cmpName) then
+            return comp
+        end
+    end
+    return nil
 end
 
 --- 判断是否包含指定的组件
@@ -92,10 +111,71 @@ function Entity:hasComponent(componentType)
     return self:getComponent(componentType) ~= nil
 end
 
-function Entity:boundChildEntity(childEntity)
+--- 获取所有匹配指定类型（或父类）的组件
+--- @param componentType string|number 要获取的组件信息，名称或者ID
+--- @return BaseComponent[] 返回匹配到的组件数组，找不到返回空表
+function Entity:getComponents(componentType)
+    local results = {}
+    ---@type number
+    local cmpID = nil
+    ---@type string
+    local cmpName = nil
+    if (type(componentType) == "number") then
+        cmpID = componentType
+        cmpName = require('BaseComponent').BaseComponent.GetTyepNameFromID(componentType)
+        assert(cmpName ~= nil, string.format('Component type ID %d is not exist', componentType))
+    elseif (type(componentType) == "string") then
+        cmpName = componentType
+        cmpID = require('BaseComponent').BaseComponent.GetTypeIDFromName(componentType)
+        assert(cmpID ~= nil, string.format('Component type %s is not exist', componentType))
+    else
+        assert(false, 'Invalid componentType parameter!')
+    end
+
+    -- collect exact match first
+    local exact = self._components[cmpID]
+    if exact ~= nil then
+        table.insert(results, exact)
+    end
+    -- then collect any derived components
+    for _, comp in pairs(self._components) do
+        if comp ~= nil and comp:isInstanceOf(cmpName) then
+            if comp ~= exact then
+                table.insert(results, comp)
+            end
+        end
+    end
+    return results
 end
 
+
+--- 绑定子Entity，并自动设置父Entity
+function Entity:boundChildEntity(childEntity)
+    assert(childEntity ~= nil and childEntity ~= self)
+    table.insert(self._childEntities, childEntity)
+    childEntity._parentEntity = self
+end
+
+
+--- 解绑子Entity
 function Entity:unboundChildEntity(childEntity)
+    assert(childEntity ~= nil)
+    for i, v in ipairs(self._childEntities) do
+        if v == childEntity then
+            table.remove(self._childEntities, i)
+            childEntity._parentEntity = nil
+            break
+        end
+    end
+end
+--- 获取父Entity
+function Entity:getParent()
+    return self._parentEntity
+end
+
+--- 获取子Entity列表
+function Entity:getChildren()
+    return self._childEntities
 end
 
 function Entity:setIDToParentEntity(inputID)

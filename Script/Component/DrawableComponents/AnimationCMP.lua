@@ -1,9 +1,10 @@
 
 local MUtils = require('MUtils')
-local BaseComponent = require("BaseComponent")
+local MOD_BaseComponent = require("BaseComponent").BaseComponent
+local MOD_DrawableCMP = require('Component.DrawableCMP').DrawableCMP
 
 --- Animation组件负责播放Sprite动画
---- @class AnimationCMP : BaseComponent
+--- @class AnimationCMP : DrawableCMP
 --- @field _sheet any
 --- @field _frames table
 --- @field _curFrameIdx number
@@ -12,10 +13,12 @@ local BaseComponent = require("BaseComponent")
 --- @field _invFrameRate number
 --- @field _timeForNextFrame number
 --- @field _maxBounding any
-local AnimationCMP = setmetatable({}, {__index = BaseComponent})
+--- @field _frameWidth number
+--- @field _frameHeight number
+local AnimationCMP = setmetatable({}, MOD_DrawableCMP)
 AnimationCMP.__index = AnimationCMP
 AnimationCMP.ComponentTypeName = "AnimationCMP"
-AnimationCMP.ComponentTypeID = BaseComponent.RegisterType(AnimationCMP.ComponentTypeName)
+AnimationCMP.ComponentTypeID = MOD_BaseComponent.RegisterType(AnimationCMP.ComponentTypeName)
 
 --- cst, 构造Animation组件
 --- 这个组件负责播放Sprite动画
@@ -31,13 +34,15 @@ function AnimationCMP:new(image, topLeftX, topLeftY, bottomRightX, bottomRightY,
     local iSPecifiedFrameCount = specifiedFrameCount or 0
     assert(frameWidth > 0, 'Frame width should greator than ZERO')
     assert(frameHeight > 0, 'Frame height should greator than ZERO')
-    local instance = setmetatable(BaseComponent.new(self, AnimationCMP.ComponentTypeName), self)
+    local instance = setmetatable(MOD_DrawableCMP.new(self, AnimationCMP.ComponentTypeName), self)
     instance._sheet = image
     instance._frames = {} -- 当前存储的帧数浪
     instance._curFrameIdx = 1 -- 当前正在播放的帧下标(Lua的下标从1开始)
     instance._frameRate = 12 -- 动画帧率12fps
     instance._invFrameRate = 1.0 / instance._frameRate -- 1.0 / frameRate
     instance._timeForNextFrame = instance._invFrameRate -- 切换到下一帧还需要多长时间
+    instance._frameWidth = frameWidth
+    instance._frameHeight = frameHeight
 
     local rangeWidth = bottomRightX - topLeftX
     local rangeHeight = bottomRightY - topLeftY
@@ -71,8 +76,6 @@ function AnimationCMP:new(image, topLeftX, topLeftY, bottomRightX, bottomRightY,
         end
     end
 
-    instance._maxBounding = nil
-
     return instance
 end
 
@@ -83,17 +86,13 @@ function AnimationCMP:getMaxBounding()
 end
 
 ---当前组件允许发起绘制
----@deprecated
----@return nil
-function AnimationCMP:draw()
-    love.graphics.draw(self._sheet, self._frames[self._curFrameIdx], 0, 0, 0, 4)
-end
-
----当前组件允许发起绘制
----@param transform love.image
+---@param transform love.Transform
 ---@return nil
 function AnimationCMP:draw(transform)
-    love.graphics.draw(self._sheet, self._frames[self._curFrameIdx], transform)
+    local selfTransform = love.math.newTransform()
+    selfTransform:translate(-self._frameWidth / 2, -self._frameHeight / 2)
+    selfTransform:apply(transform)
+    love.graphics.draw(self._sheet, self._frames[self._curFrameIdx], selfTransform)
 end
 
 --- 更新方法，用于更新当前的帧
@@ -109,5 +108,7 @@ function AnimationCMP:update(deltaTime)
     end
 end
 
-return AnimationCMP
+return {
+    AnimationCMP = AnimationCMP,
+}
 

@@ -134,9 +134,12 @@ end
 local InteractConsumeInfo = {}
 InteractConsumeInfo.__index = InteractConsumeInfo
 
-function InteractConsumeInfo:new()
+---cst, 用来构建指定交互组合在当前交互状态下是否满足
+---@param checkFunction fun(obj:KeyboardInteractDesc|MouseInteractDesc|nil):boolean 用来检查交互状态的函数
+function InteractConsumeInfo:new(checkFunction)
     local instance = setmetatable({}, self)
-    instance._checkFunc = nil
+    instance._checkFunc = checkFunction or function() return false end
+    return instance
 end
 
 ---检查当前用户的交互信息是否满足要求
@@ -144,5 +147,13 @@ end
 ---@return boolean 假如交互信息中存在满足检查函数的情况，返回True，否则返回False
 function InteractConsumeInfo:doCheck(obj)
     if obj == nil then return false end
+    if obj._isConsumed then return false end -- 指令已经被处理过了，就不再响应了
     return self._checkFunc(obj)
 end
+
+return {
+    KeyInteractDesc = KeyInteractDesc,
+    KeyboardInteractDesc = KeyboardInteractDesc,
+    MouseInteractDesc = MouseInteractDesc,
+    InteractConsumeInfo = InteractConsumeInfo,
+}
