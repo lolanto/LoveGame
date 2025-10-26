@@ -4,9 +4,10 @@
 --- 创建只读包装器
 --- 使用元表拦截所有写操作，只允许读取操作
 ---@param obj any 要包装的对象
----@param allowedPattern string 指定允许的访问模式，格式是正则表达式
+---@param allowedPattern? string 指定允许的访问模式，格式是正则表达式
 ---@return any 只读包装器
 local function makeReadOnly(obj, allowedPattern)
+    allowedPattern = allowedPattern or "^.*_const$"  -- 默认允许以 _const 结尾的方法
     assert(obj ~= nil and type(allowedPattern) == "string", "Invalid arguments to makeReadOnly")
 
     local wrapper = {}

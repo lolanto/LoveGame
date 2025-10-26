@@ -29,7 +29,7 @@ function TransformUpdateSys:tick(deltaTime)
         ---@type TransformCMP
         local transform = transforms[i]
         if transform ~= nil then
-            local entity = transform._entity
+            local entity = transform:getEntity()
             ---@type TransformCMP|nil
             local parentTransform = nil
             if entity ~= nil and entity.getParent then

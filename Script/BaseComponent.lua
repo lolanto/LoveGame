@@ -18,6 +18,12 @@ function BaseComponent:new(typeName)
     return instance
 end
 
+--- 获取当前组件绑定的实体
+--- @return Entity|nil
+function BaseComponent:getEntity()
+    return self._entity
+end
+
 --- 注册一个类型信息，并返回这个类型的类型id
 --- 假如类型已经存在会抛出异常
 --- @param typeName string

@@ -2,8 +2,8 @@
 local MOD_BaseComponent = require('BaseComponent').BaseComponent
 
 ---@class CameraCMP : BaseComponent
----@field _viewWidthScale number
----@field _viewHeightScale number
+---@field _viewWidthMeters number 视口宽度，单位米
+---@field _viewHeightMeters number 视口高度，单位米
 local CameraCMP = setmetatable({}, MOD_BaseComponent)
 CameraCMP.__index = CameraCMP
 CameraCMP.ComponentTypeName = "CameraCMP"
@@ -12,25 +12,40 @@ CameraCMP.ComponentTypeID = MOD_BaseComponent.RegisterType(CameraCMP.ComponentTy
 
 function CameraCMP:new()
     local instance = setmetatable(MOD_BaseComponent.new(self, CameraCMP.ComponentTypeName), self)
-    instance._viewWidthScale = 1.0
-    instance._viewHeightScale = 1.0
+    local screenScale = love.graphics.getPixelWidth() / love.graphics.getPixelHeight()
+    instance._viewWidthMeters = 40
+    instance._viewHeightMeters = instance._viewWidthMeters / screenScale
     return instance
 end
 
-function CameraCMP:setViewWidthScale(widthScale)
-    self._viewWidthScale = widthScale
+
+function CameraCMP:setViewWidthMeters(w)
+    local screenScale = love.graphics.getPixelWidth() / love.graphics.getPixelHeight()
+    self._viewWidthMeters = w
+    self._viewHeightMeters = self._viewWidthMeters / screenScale
 end
 
-function CameraCMP:setViewHeightScale(heightScale)
-    self._viewHeightScale = heightScale
+function CameraCMP:getViewWidthMeters_const()
+    return self._viewWidthMeters
+end
+
+function CameraCMP:getViewHeightMeters_const()
+    return self._viewHeightMeters
 end
 
 ---获取当前镜头的水平和垂直缩放(平移旋转由Transform组件控制)
 ---@return love.Transform
 function CameraCMP:getProjectionTransform()
+    ---@type RenderEnv const
+    local renderEnvObj = require('RenderEnv').RenderEnv.getGlobalInstance_const()
+
     local halfWindowWidth = love.graphics.getPixelWidth() / 2
     local halfWindowHeight = love.graphics.getPixelHeight() / 2
-    -- 让镜头中心对准窗口中心
+    
+    local scaleX = renderEnvObj:getPixelsPerMeter_const()
+    local scaleY = scaleX;
+
+    -- 将镜头中心对准窗口中心，并应用像素缩放（单位：像素/米）
     --[[
         这段比较复杂，简单说明下实现。
         1. love2d的坐标系统单位是像素
@@ -42,7 +57,7 @@ function CameraCMP:getProjectionTransform()
 
         因此才看到下面的newTransform，在x,y方向上平移halfWindowWidth, halfWindowHeight。
     --]]
-    local proj = love.math.newTransform(halfWindowWidth, halfWindowHeight, 0, self._viewWidthScale, self._viewHeightScale)
+    local proj = love.math.newTransform(halfWindowWidth, halfWindowHeight, 0, scaleX, scaleY)
     return proj
 end
 

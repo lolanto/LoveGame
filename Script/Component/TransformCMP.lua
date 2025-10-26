@@ -16,6 +16,12 @@ local MOD_BaseComponent = require('BaseComponent').BaseComponent
 ---@field _scaleY number
 ---@field _isDirty boolean
 ---@field _transform nil|love.Transform
+---@field _worldPosX number
+---@field _worldPosY number
+---@field _worldRotate number
+---@field _worldScaleX number
+---@field _worldIsDirty boolean
+---@field _worldTransform nil|love.Transform
 local TransformCMP = setmetatable({}, {__index = MOD_BaseComponent})
 TransformCMP.__index = TransformCMP
 TransformCMP.ComponentTypeName = "TransformCMP"
@@ -24,6 +30,8 @@ TransformCMP.ComponentTypeID = MOD_BaseComponent.RegisterType(TransformCMP.Compo
 
 function TransformCMP:new()
     local instance = setmetatable(MOD_BaseComponent.new(self, TransformCMP.ComponentTypeName), self)
+    -- 变换属性的单位，无论是局部还是世界，均以米为单位
+    -- 局部变换属性
     instance._posX = 0
     instance._posY = 0
     instance._rotate = 0

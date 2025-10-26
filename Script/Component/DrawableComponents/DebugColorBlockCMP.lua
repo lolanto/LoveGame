@@ -44,7 +44,11 @@ function DebugColorBlockCMP:draw(transform)
     local actualTranslateY = translateY - (self._height * scaleY) / 2
     local actualWidth = self._width * scaleX
     local actualHeight = self._height * scaleY
-    love.graphics.rectangle("fill", actualTranslateX, actualTranslateY, actualWidth, actualHeight)
+    love.graphics.rectangle("fill"
+        , actualTranslateX
+        , actualTranslateY
+        , actualWidth
+        , actualHeight)
     love.graphics.setColor({1,1,1,1})
 end
 

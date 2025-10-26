@@ -11,7 +11,7 @@
 
 local MOD_BaseSystem = require('BaseSystem').BaseSystem
 
---- 该模块负责根据镜头组件，设置当前的渲染配�?
+--- 该模块负责根据镜头组件，设置当前的渲染配置
 ---@class CameraSetupSys : BaseSystem
 local CameraSetupSys = setmetatable({}, MOD_BaseSystem)
 CameraSetupSys.__index = CameraSetupSys
@@ -68,7 +68,7 @@ function CameraSetupSys:collect(entity)
     end
 end
 
---- 设置摄像机实�?
+--- 设置摄像机实体
 --- 这个方法会调用collect方法从entity身上收集组件
 --- 假如明确哪个entity是摄像机，可以直接调用这个方法以跳过
 function CameraSetupSys:setupCameraEntity(entity)
@@ -77,32 +77,25 @@ function CameraSetupSys:setupCameraEntity(entity)
 end
 
 --- tick
---- 根据Camera Entity的Transform组件以及摄像机组件，计算一个完整的摄像机变换矩�?
+--- 根据Camera Entity的Transform组件以及摄像机组件，计算一个完整的摄像机变换矩阵
 --- 并通过love.graphics.replaceTransform应用这个变换矩阵
 ---@param deltaTime number 距离上一帧的时间间隔，单位秒
----@param renderEnvObj RenderEnv 渲染环境对象，预留参数，目前未使�?
-function CameraSetupSys:tick(deltaTime, renderEnvObj)
+function CameraSetupSys:tick(deltaTime)
     MOD_BaseSystem.tick(self, deltaTime)
     if #self._collectedComponents['CameraCMP'] == 1 then
+        local renderEnvObj = require('RenderEnv').RenderEnv.getGlobalInstance()
         ---@type CameraCMP
         local cameraCmp = self._collectedComponents['CameraCMP'][1]
         ---@type TransformCMP
         local transformCmp = self._collectedComponents['TransformCMP'][1]
-        local camPosX, camPosY = transformCmp:getTranslate_const()
+
+        renderEnvObj:setViewWidth(cameraCmp:getViewWidthMeters_const())
+
         local camProjTransform = cameraCmp:getProjectionTransform()
-        --- 根据摄像机的位置偏移camPosX和camPosY，以及投影变�?
-        --- 计算一个完整的摄像机变换矩�?
-        local completeCamTransform = love.math.newTransform()
-        completeCamTransform:translate(-camPosX, -camPosY)
-        local d_mat1_1, d_mat1_2, d_mat1_3, d_mat1_4
-            , d_mat2_1, d_mat2_2, d_mat2_3, d_mat2_4
-            , d_mat3_1, d_mat3_2, d_mat3_3, d_mat3_4
-            , d_mat4_1, d_mat4_2, d_mat4_3, d_mat4_4 = completeCamTransform:getMatrix()
-        completeCamTransform:apply(camProjTransform)
-        local f_mat1_1, f_mat1_2, f_mat1_3, f_mat1_4
-            , f_mat2_1, f_mat2_2, f_mat2_3, f_mat2_4
-            , f_mat3_1, f_mat3_2, f_mat3_3, f_mat3_4
-            , f_mat4_1, f_mat4_2, f_mat4_3, f_mat4_4 = completeCamTransform:getMatrix()
+        --- 根据摄像机的位置偏移camPosX和camPosY，以及摄像机的投影矩阵
+        --- 计算一个完整的摄像机变换矩阵
+        local completeCamTransform = transformCmp:getWorldTransform_const():inverse()
+        completeCamTransform = camProjTransform:apply(completeCamTransform)
         renderEnvObj:setCameraProj(completeCamTransform)
     end
 end

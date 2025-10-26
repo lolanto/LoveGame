@@ -89,9 +89,11 @@ end
 ---@param transform love.Transform
 ---@return nil
 function AnimationCMP:draw(transform)
-    local selfTransform = love.math.newTransform()
-    selfTransform:translate(-self._frameWidth / 2, -self._frameHeight / 2)
-    selfTransform:apply(transform)
+    -- 以下的selfTranslate和selfScale，相当于认为图片的帧就是1m x 1m的大小
+    local selfTranslate = love.math.newTransform(-0.5, -0.5)
+    local selfScale = love.math.newTransform(0, 0, 0, 1 / self._frameWidth, 1 / self._frameHeight)
+    
+    local selfTransform = selfTranslate:apply(transform):apply(selfScale)
     love.graphics.draw(self._sheet, self._frames[self._curFrameIdx], selfTransform)
 end
 

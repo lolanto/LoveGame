@@ -8,7 +8,7 @@ MainCharacterInteractSys.__index = MainCharacterInteractSys
 MainCharacterInteractSys.SystemTypeName = "MainCharacterInteractSys"
 
 -- gameplay相关的常量
-MainCharacterInteractSys.WalkSpeed = 100.0  -- 主角行走速度，单位m/s
+MainCharacterInteractSys.WalkSpeed = 2.0  -- 主角行走速度，单位m/s
 
 function MainCharacterInteractSys:new()
     local instance = setmetatable(MOD_BaseSystem.new(self, MainCharacterInteractSys.SystemTypeName), self)
@@ -114,6 +114,7 @@ function MainCharacterInteractSys:tick(deltaTime)
         moveDir.x = moveDir.x / len
         moveDir.y = moveDir.y / len
     end
+
     movementCmp:setVelocity(
         moveDir.x * MainCharacterInteractSys.WalkSpeed, -- velocityX
         moveDir.y * MainCharacterInteractSys.WalkSpeed -- velocityY

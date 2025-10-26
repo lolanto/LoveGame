@@ -23,6 +23,7 @@ local renderEnv = nil
 
 function love.load()
     renderEnv = require('RenderEnv').RenderEnv:new()
+    require('RenderEnv').RenderEnv.setGlobalInstance(renderEnv)
     userInteractController = require('UserInteractController').UserInteractController:new()
 
     local MOD_Entity = require('Entity')
@@ -53,46 +54,40 @@ function love.load()
     entity:boundChildEntity(entityCam)
 
     local entity2 = MOD_Entity:new('debug')
-    entity2:boundComponent(require('Component.DrawableComponents.DebugColorBlockCMP').DebugColorBlockCMP:new({255,0,0,255}, 50, 50))
+    entity2:boundComponent(require('Component.DrawableComponents.DebugColorBlockCMP').DebugColorBlockCMP:new({255,0,0,255}, 1, 1))
     entity2:getComponent('DebugColorBlockCMP'):setLayer(-1) -- 设置这个组件的绘制层级为-1
     entity2:boundComponent(require('Component.TransformCMP').TransformCMP:new())
+    -- entity2:getComponent('TransformCMP'):setTranslate(1.5, 0)
     entity2:boundComponent(require('Component.MovementCMP').MovementCMP:new())
-    local PatrolType = require('Component.Gameplay.PatrolCMP').PatrolType
-    -- local PatrolTypeParam_CircularEntity = require('Component.Gameplay.PatrolCMP').PatrolTypeParam_CircularEntity
-    -- entity2:boundComponent(require('Component.Gameplay.PatrolCMP').PatrolCMP:new(PatrolType.CIRCULAR_ENTITY, PatrolTypeParam_CircularEntity:new(entity, 80, 0.5)))
-    entity2:boundComponent(require('Component.Gameplay.PatrolCMP').PatrolCMP:new(PatrolType.CIRCULAR_POINT, require('Component.Gameplay.PatrolCMP').PatrolTypeParam_CircularPoint:new(0, 0, 80, 5)))
+    -- local PatrolType = require('Component.Gameplay.PatrolCMP').PatrolType
+    -- entity2:boundComponent(require('Component.Gameplay.PatrolCMP').PatrolCMP:new(PatrolType.CIRCULAR_POINT, require('Component.Gameplay.PatrolCMP').PatrolTypeParam_CircularPoint:new(0, 0, 1.5, 20)))
     table.insert(entities, entity2)
     entity:boundChildEntity(entity2)
 
     local entityBackground = MOD_Entity:new('background')
-    entityBackground:boundComponent(require('Component.DrawableComponents.StaticTextureCMP').StaticTextureCMP:new("Resources/debug_background_tile.png", {
-        tileScale = 1.0,
-        offsetX = 0,
-        offsetY = 0,
-        layer = -100, -- 设置这个组件的绘制层级为-100，确保在最底层
-    }))
+    entityBackground:boundComponent(require('Component.DrawableComponents.DebugTileTexture').DebugTileTextureCMP:new())
     entityBackground:boundComponent(require('Component.TransformCMP').TransformCMP:new())
     table.insert(entities, entityBackground)
 
     -- 示例：创建环绕固定点巡逻的实体
     local entityPatrolCircular = MOD_Entity:new('patrol_circular')
-    entityPatrolCircular:boundComponent(require('Component.DrawableComponents.DebugColorBlockCMP').DebugColorBlockCMP:new({255,255,0,255}, 20, 20))
+    entityPatrolCircular:boundComponent(require('Component.DrawableComponents.DebugColorBlockCMP').DebugColorBlockCMP:new({255,255,0,255}, 1, 1))
     entityPatrolCircular:boundComponent(require('Component.TransformCMP').TransformCMP:new())
-    entityPatrolCircular:getComponent('TransformCMP'):setTranslate(200, 150) -- 初始位置
+    entityPatrolCircular:getComponent('TransformCMP'):setTranslate(2, 1.5) -- 初始位置
     entityPatrolCircular:boundComponent(require('Component.MovementCMP').MovementCMP:new())
     local PatrolType = require('Component.Gameplay.PatrolCMP').PatrolType
     entityPatrolCircular:boundComponent(require('Component.Gameplay.PatrolCMP').PatrolCMP:new(PatrolType.CIRCULAR_ENTITY
-        , require('Component.Gameplay.PatrolCMP').PatrolTypeParam_CircularEntity:new(entity, 70, 2)))
-    table.insert(entities, entityPatrolCircular)
+        , require('Component.Gameplay.PatrolCMP').PatrolTypeParam_CircularEntity:new(entity, 1, 2)))
+    -- table.insert(entities, entityPatrolCircular)
 
     -- 示例：创建直线往返巡逻的实体
     local entityPatrolLinear = MOD_Entity:new('patrol_linear')
-    entityPatrolLinear:boundComponent(require('Component.DrawableComponents.DebugColorBlockCMP').DebugColorBlockCMP:new({0,255,255,255}, 20, 20))
+    entityPatrolLinear:boundComponent(require('Component.DrawableComponents.DebugColorBlockCMP').DebugColorBlockCMP:new({0,255,255,255}, 1, 1))
     entityPatrolLinear:boundComponent(require('Component.TransformCMP').TransformCMP:new())
-    entityPatrolLinear:getComponent('TransformCMP'):setTranslate(100, 200)
+    entityPatrolLinear:getComponent('TransformCMP'):setTranslate(10, 10)
     entityPatrolLinear:boundComponent(require('Component.MovementCMP').MovementCMP:new())
     local PatrolTypeParam_LinearPatrolPoints = require('Component.Gameplay.PatrolCMP').PatrolTypeParam_LinearPatrolPoints
-    entityPatrolLinear:boundComponent(require('Component.Gameplay.PatrolCMP').PatrolCMP:new(PatrolType.LINEAR_PATROL_POINTS, PatrolTypeParam_LinearPatrolPoints:new(100, 200, 300, 200, 50)))
+    entityPatrolLinear:boundComponent(require('Component.Gameplay.PatrolCMP').PatrolCMP:new(PatrolType.LINEAR_PATROL_POINTS, PatrolTypeParam_LinearPatrolPoints:new(10, 10, 10, 10, 50)))
     table.insert(entities, entityPatrolLinear)
 
     mainCharacterEntity = entity
@@ -185,7 +180,7 @@ function love.update(deltaTime)
     systems['EntityMovementSys']:tick(deltaTime)
     systems['TransformUpdateSys']:tick(deltaTime)
     ---@cast systems['CameraSetupSys'] CameraSetupSys
-    systems['CameraSetupSys']:tick(deltaTime, renderEnv)
+    systems['CameraSetupSys']:tick(deltaTime)
     systems['DisplaySys']:tick(deltaTime)
 
     postUpdate()
