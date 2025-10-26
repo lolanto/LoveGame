@@ -1,24 +1,25 @@
 -- TransformUpdateSys.lua
 -- 根据父子关系更新Transform组件的世界变换
 
-local BaseSystem = require('BaseSystem')
+local MOD_BaseSystem = require('BaseSystem').BaseSystem
 local TransformCMP = require('Component.TransformCMP').TransformCMP
 
 ---@class TransformUpdateSys : BaseSystem
-local TransformUpdateSys = setmetatable({}, BaseSystem)
+local TransformUpdateSys = setmetatable({}, MOD_BaseSystem)
 TransformUpdateSys.__index = TransformUpdateSys
 TransformUpdateSys.SystemTypeName = "TransformUpdateSys"
 
 function TransformUpdateSys:new()
-    local instance = setmetatable(BaseSystem.new(self, TransformUpdateSys.SystemTypeName), self)
-    instance:addComponentRequirement(TransformCMP.ComponentTypeID, true)
+    local instance = setmetatable(MOD_BaseSystem.new(self, TransformUpdateSys.SystemTypeName), self)
+    local ComponentRequirementDesc = require('BaseSystem').ComponentRequirementDesc
+    instance:addComponentRequirement(TransformCMP.ComponentTypeID, ComponentRequirementDesc:new(true, false))
     return instance
 end
 
 --- 遍历收集到的Transform组件，按父子关系更新世界变换
 ---@param deltaTime number
 function TransformUpdateSys:tick(deltaTime)
-    BaseSystem.tick(self, deltaTime)
+    MOD_BaseSystem.tick(self, deltaTime)
     local transforms = self._collectedComponents[TransformCMP.ComponentTypeName]
     if transforms == nil then
         return
@@ -42,16 +43,16 @@ function TransformUpdateSys:tick(deltaTime)
                 end
             end
 
-            local px, py = transform:getTranslate()
-            local pr = transform:getRotate()
-            local psx, psy = transform:getScale()
+            local px, py = transform:getTranslate_const()
+            local pr = transform:getRotate_const()
+            local psx, psy = transform:getScale_const()
 
             local wx, wy, wr, wsx, wsy
             if parentTransform ~= nil then
                 ---@cast parentTransform TransformCMP
-                local pwx, pwy = parentTransform:getWorldPosition()
-                local pwr = parentTransform:getWorldRotate()
-                local pwsx, pwsy = parentTransform:getWorldScale()
+                local pwx, pwy = parentTransform:getWorldPosition_const()
+                local pwr = parentTransform:getWorldRotate_const()
+                local pwsx, pwsy = parentTransform:getWorldScale_const()
                 local cosr = math.cos(pwr)
                 local sinr = math.sin(pwr)
                 wx = pwx + cosr * px * pwsx - sinr * py * pwsy
@@ -64,15 +65,14 @@ function TransformUpdateSys:tick(deltaTime)
             end
 
             -- 检查 TransformCMP 本身是否有缓存的世界偏移（EntityMovementSys 可能把偏移累积到这里）
-            if type(transform.consumePendingWorldTranslate) == 'function' then
-                local pdx, pdy = transform:consumePendingWorldTranslate()
-                if (pdx ~= 0 and pdy ~= 0) or (pdx ~= 0) or (pdy ~= 0) then
-                    wx = wx + pdx
-                    wy = wy + pdy
-                end
+            local pdx, pdy = transform:consumePendingWorldTranslate()
+            if (pdx ~= 0 and pdy ~= 0) or (pdx ~= 0) or (pdy ~= 0) then
+                wx = wx + pdx
+                wy = wy + pdy
             end
 
             transform:_setWorldTransform(wx, wy, wr, wsx, wsy)
+            transform:updateWorldTransform()
         end
     end
 end

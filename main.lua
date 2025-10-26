@@ -29,6 +29,7 @@ function love.load()
 
     systems['TransformUpdateSys'] = require('System.TransformUpdateSys').TransformUpdateSys:new()
     systems['MainCharacterInteractSys'] = require('System.MainCharacterInteractSys').MainCharacterInteractSys:new()
+    systems['PatrolSys'] = require('System.Gameplay.PatrolSys').PatrolSys:new()
     systems['EntityMovementSys'] = require('System.EntityMovementSys').EntityMovementSys:new()
     systems['CameraSetupSys'] = require('System.CameraSetupSys').CameraSetupSys:new()
     systems['DisplaySys'] = require('System.DisplaySys').DisplaySys:new()
@@ -55,7 +56,13 @@ function love.load()
     entity2:boundComponent(require('Component.DrawableComponents.DebugColorBlockCMP').DebugColorBlockCMP:new({255,0,0,255}, 50, 50))
     entity2:getComponent('DebugColorBlockCMP'):setLayer(-1) -- 设置这个组件的绘制层级为-1
     entity2:boundComponent(require('Component.TransformCMP').TransformCMP:new())
+    entity2:boundComponent(require('Component.MovementCMP').MovementCMP:new())
+    local PatrolType = require('Component.Gameplay.PatrolCMP').PatrolType
+    -- local PatrolTypeParam_CircularEntity = require('Component.Gameplay.PatrolCMP').PatrolTypeParam_CircularEntity
+    -- entity2:boundComponent(require('Component.Gameplay.PatrolCMP').PatrolCMP:new(PatrolType.CIRCULAR_ENTITY, PatrolTypeParam_CircularEntity:new(entity, 80, 0.5)))
+    entity2:boundComponent(require('Component.Gameplay.PatrolCMP').PatrolCMP:new(PatrolType.CIRCULAR_POINT, require('Component.Gameplay.PatrolCMP').PatrolTypeParam_CircularPoint:new(0, 0, 80, 5)))
     table.insert(entities, entity2)
+    entity:boundChildEntity(entity2)
 
     local entityBackground = MOD_Entity:new('background')
     entityBackground:boundComponent(require('Component.DrawableComponents.StaticTextureCMP').StaticTextureCMP:new("Resources/debug_background_tile.png", {
@@ -66,6 +73,27 @@ function love.load()
     }))
     entityBackground:boundComponent(require('Component.TransformCMP').TransformCMP:new())
     table.insert(entities, entityBackground)
+
+    -- 示例：创建环绕固定点巡逻的实体
+    local entityPatrolCircular = MOD_Entity:new('patrol_circular')
+    entityPatrolCircular:boundComponent(require('Component.DrawableComponents.DebugColorBlockCMP').DebugColorBlockCMP:new({255,255,0,255}, 20, 20))
+    entityPatrolCircular:boundComponent(require('Component.TransformCMP').TransformCMP:new())
+    entityPatrolCircular:getComponent('TransformCMP'):setTranslate(200, 150) -- 初始位置
+    entityPatrolCircular:boundComponent(require('Component.MovementCMP').MovementCMP:new())
+    local PatrolType = require('Component.Gameplay.PatrolCMP').PatrolType
+    entityPatrolCircular:boundComponent(require('Component.Gameplay.PatrolCMP').PatrolCMP:new(PatrolType.CIRCULAR_ENTITY
+        , require('Component.Gameplay.PatrolCMP').PatrolTypeParam_CircularEntity:new(entity, 70, 2)))
+    table.insert(entities, entityPatrolCircular)
+
+    -- 示例：创建直线往返巡逻的实体
+    local entityPatrolLinear = MOD_Entity:new('patrol_linear')
+    entityPatrolLinear:boundComponent(require('Component.DrawableComponents.DebugColorBlockCMP').DebugColorBlockCMP:new({0,255,255,255}, 20, 20))
+    entityPatrolLinear:boundComponent(require('Component.TransformCMP').TransformCMP:new())
+    entityPatrolLinear:getComponent('TransformCMP'):setTranslate(100, 200)
+    entityPatrolLinear:boundComponent(require('Component.MovementCMP').MovementCMP:new())
+    local PatrolTypeParam_LinearPatrolPoints = require('Component.Gameplay.PatrolCMP').PatrolTypeParam_LinearPatrolPoints
+    entityPatrolLinear:boundComponent(require('Component.Gameplay.PatrolCMP').PatrolCMP:new(PatrolType.LINEAR_PATROL_POINTS, PatrolTypeParam_LinearPatrolPoints:new(100, 200, 300, 200, 50)))
+    table.insert(entities, entityPatrolLinear)
 
     mainCharacterEntity = entity
     mainCameraEntity = entity
@@ -135,6 +163,7 @@ function love.update(deltaTime)
 
     systems['TransformUpdateSys']:preCollect()
     systems['MainCharacterInteractSys']:preCollect()
+    systems['PatrolSys']:preCollect()
     systems['EntityMovementSys']:preCollect()
     systems['CameraSetupSys']:preCollect()
     systems['DisplaySys']:preCollect()
@@ -144,6 +173,7 @@ function love.update(deltaTime)
         if entity ~= nil then
             systems['TransformUpdateSys']:collect(entity)
             systems['MainCharacterInteractSys']:collect(entity)
+            systems['PatrolSys']:collect(entity)
             systems['EntityMovementSys']:collect(entity)
             systems['CameraSetupSys']:collect(entity)
             systems['DisplaySys']:collect(entity)
@@ -151,6 +181,7 @@ function love.update(deltaTime)
     end
 
     systems['MainCharacterInteractSys']:tick(deltaTime)
+    systems['PatrolSys']:tick(deltaTime)
     systems['EntityMovementSys']:tick(deltaTime)
     systems['TransformUpdateSys']:tick(deltaTime)
     ---@cast systems['CameraSetupSys'] CameraSetupSys

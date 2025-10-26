@@ -1,7 +1,20 @@
+---@class ComponentRequirementDesc
+---@field _mustHave boolean 该组件是否为必须组件
+---@field _readOnly boolean 该组件是否为只读组件
+local ComponentRequirementDesc = {}
+ComponentRequirementDesc.__index = ComponentRequirementDesc
+
+function ComponentRequirementDesc:new(mustHave, readOnly)
+    local instance = setmetatable({}, ComponentRequirementDesc)
+    instance._mustHave = mustHave
+    instance._readOnly = readOnly
+    return instance
+end
+
 
 ---@class BaseSystem
 ---@field _nameOfSystem string
----@field _requiredComponentInfos {string:boolean}
+---@field _requiredComponentInfos {string:ComponentRequirementDesc}
 ---@field _collectedComponents {string:[BaseComponent]}
 local BaseSystem = {}
 BaseSystem.__index = BaseSystem
@@ -20,16 +33,16 @@ end
 
 ---增加组件的请求信息，假如组件信息已存在，则可修改其required
 ---@param componentInfo string|number 组件的描述信息，组件名称或者ID
----@param isRequired boolean 是否必须的组件
+---@param requirementDesc ComponentRequirementDesc 组件需求描述
 ---@return nil
-function BaseSystem:addComponentRequirement(componentInfo, isRequired)
+function BaseSystem:addComponentRequirement(componentInfo, requirementDesc)
     local MOD_BaseComponent = require('BaseComponent').BaseComponent
     local cmpInfo2 = MOD_BaseComponent.CheckTypeExistence(componentInfo)
     assert(cmpInfo2 ~= nil, 'Component is not exist!')
     if (type(cmpInfo2) == 'string') then 
-        self._requiredComponentInfos[cmpInfo2] = isRequired
+        self._requiredComponentInfos[cmpInfo2] = requirementDesc
     else
-        self._requiredComponentInfos[componentInfo] = isRequired
+        self._requiredComponentInfos[componentInfo] = requirementDesc
     end
 end
 
@@ -37,8 +50,8 @@ end
 ---@param componentInfo string|number 组件的描述信息，组件名称或者ID
 ---@return nil
 function BaseSystem:removeComponentRequirement(componentInfo)
-    local MOD_BaseSystem = require('BaseComponent').BaseComponent
-    local cmpInfo2 = MOD_BaseSystem.CheckTypeExistence(componentInfo)
+    local MOD_BaseComponent = require('BaseComponent').BaseComponent
+    local cmpInfo2 = MOD_BaseComponent.CheckTypeExistence(componentInfo)
     assert(cmpInfo2 ~= nil, 'Component is not exist!')
     if (type(cmpInfo2) == 'string') then 
         self._requiredComponentInfos[cmpInfo2] = nil
@@ -49,7 +62,7 @@ end
 
 function BaseSystem:preCollect()
     self._collectedComponents = {}
-    for componentName, isRequired in pairs(self._requiredComponentInfos) do
+    for componentName, requirementDesc in pairs(self._requiredComponentInfos) do
         self._collectedComponents[componentName] = {}
     end
 end
@@ -61,10 +74,10 @@ function BaseSystem:collect(entity)
     local ignoreThisEntity = false
     local errorOccurred = false
     local collectedComponents = {}
-    for componentName, isRequired in pairs(self._requiredComponentInfos) do
+    for componentName, requirementDesc in pairs(self._requiredComponentInfos) do
         local retCmp = entity:getComponent(componentName)
         collectedComponents[componentName] = retCmp
-        if retCmp == nil and isRequired then
+        if retCmp == nil and requirementDesc._mustHave then
             ignoreThisEntity = true
             break
         end
@@ -73,6 +86,10 @@ function BaseSystem:collect(entity)
         errorOccurred = false
     else
         for componentName, component in pairs(collectedComponents) do
+            local requirementDesc = self._requiredComponentInfos[componentName]
+            if requirementDesc._readOnly and component ~= nil then
+                component = require('utils.ReadOnly').makeComponentReadOnly(component)
+            end
             table.insert(self._collectedComponents[componentName], component)
         end
     end
@@ -88,4 +105,7 @@ function BaseSystem:draw()
 end
 
 
-return BaseSystem
+return {
+    BaseSystem = BaseSystem,
+    ComponentRequirementDesc = ComponentRequirementDesc
+}

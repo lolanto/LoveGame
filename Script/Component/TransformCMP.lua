@@ -44,43 +44,43 @@ function TransformCMP:new()
     return instance
 end
 
----获取位移情况
----@return number,number 返回x和y的位移
-function TransformCMP:getTranslate()
+---获取位移情况（只读版本）
+---@return number,number 返回x和y的位移(局部空间)
+function TransformCMP:getTranslate_const()
     return self._posX, self._posY
 end
 
----获取缩放情况
----@return number,number 返回x和y轴的缩放程度
-function TransformCMP:getScale()
+---获取缩放情况（只读版本）
+---@return number,number 返回x和y轴的缩放程度(局部空间)
+function TransformCMP:getScale_const()
     return self._scaleX, self._scaleY
 end
 
----获取旋转情况
----@return number 返回旋转的角度
-function TransformCMP:getRotate()
+---获取旋转情况（只读版本）
+---@return number 返回旋转的角度(局部空间)
+function TransformCMP:getRotate_const()
     return self._rotate
 end
 
----获取世界坐标
+---获取世界坐标（只读版本）
 ---@return number, number 返回世界x和y
-function TransformCMP:getWorldPosition()
+function TransformCMP:getWorldPosition_const()
     return self._worldPosX, self._worldPosY
 end
 
----获取世界缩放
+---获取世界缩放（只读版本）
 ---@return number, number 返回世界缩放x和y
-function TransformCMP:getWorldScale()
+function TransformCMP:getWorldScale_const()
     return self._worldScaleX, self._worldScaleY
 end
 
----获取世界旋转
+---获取世界旋转（只读版本）
 ---@return number 返回世界旋转角度
-function TransformCMP:getWorldRotate()
+function TransformCMP:getWorldRotate_const()
     return self._worldRotate
 end
 
----设置位移大小
+---设置局部空间位移大小
 ---@param x number x轴向位移
 ---@param y number y轴向位移
 function TransformCMP:setTranslate(x, y)
@@ -91,7 +91,7 @@ function TransformCMP:setTranslate(x, y)
     self._worldIsDirty = true
 end
 
----设置位移偏移大小
+---设置局部空间位移偏移大小
 ---@param dx number x轴向位移偏移
 ---@param dy number y轴向位移偏移
 function TransformCMP:addTranslate(dx, dy)
@@ -102,7 +102,7 @@ function TransformCMP:addTranslate(dx, dy)
     self._worldIsDirty = true
 end
 
----设置缩放大小
+---设置局部空间缩放大小
 ---@param x number x轴向的缩放大小
 ---@param y number y轴向的缩放大小
 function TransformCMP:setScale(x, y)
@@ -113,7 +113,7 @@ function TransformCMP:setScale(x, y)
     self._worldIsDirty = true
 end
 
----设置旋转角度
+---设置局部空间旋转角度
 ---@param r number 旋转角度，正值为顺时针
 function TransformCMP:setRotate(r)
     assert(r ~= next)
@@ -122,23 +122,52 @@ function TransformCMP:setRotate(r)
     self._worldIsDirty = true
 end
 
----返回变换矩阵情况，假如中间参数有变更会申请一个变换
----@return love.Transform 返回本地变换矩阵
-function TransformCMP:getLocalTransform()
+---更新局部变换矩阵
+---@return nil
+function TransformCMP:updateLocalTransform()
     if self._isDirty then
         self._transform = love.math.newTransform(self._posX, self._posY, self._rotate, self._scaleX, self._scaleY, 0, 0)
         self._isDirty = false
     end
+end
+
+---返回局部变换矩阵情况。若有修改，会尝试更新局部变换矩阵
+---@return love.Transform 返回局部变换矩阵
+function TransformCMP:getLocalTransform()
+    self:updateLocalTransform()
     return self._transform
 end
 
----返回世界变换矩阵
----@return love.Transform 返回世界变换矩阵（由TransformUpdateSystem维护的世界属性生成）
-function TransformCMP:getWorldTransform()
+---返回局部变换矩阵情况（只读版本）
+---@return love.Transform 返回局部变换矩阵
+---@note 假如矩阵明确有修改，请调用updateLocalTransform先更新，或者调用非const版本
+function TransformCMP:getLocalTransform_const()
+    assert(self._isDirty == false, "Attempt to get const local transform while dirty!")
+    return self._transform
+end
+
+---更新全局变换矩阵
+---@return nil
+function TransformCMP:updateWorldTransform()
     if self._worldIsDirty then
-        -- 当世界变换脏时，构建世界变换矩阵
         self._worldTransform = love.math.newTransform(self._worldPosX, self._worldPosY, self._worldRotate, self._worldScaleX, self._worldScaleY, 0, 0)
         self._worldIsDirty = false
+    end
+end
+
+---返回世界变换矩阵。若有修改，会尝试更新世界变换矩阵
+---@return love.Transform 返回世界变换矩阵（由TransformUpdateSystem维护的世界属性生成）
+function TransformCMP:getWorldTransform()
+    self:updateWorldTransform()
+    return self._worldTransform
+end
+
+---返回世界变换矩阵（只读版本）
+---@return love.Transform 返回世界变换矩阵（由TransformUpdateSystem维护的世界属性生成）
+---@note 假如矩阵明确有修改，请调用updateWorldTransform先更新，或者调用非const版本
+function TransformCMP:getWorldTransform_const()
+    if self._worldIsDirty then
+        assert(self._isDirty == false, "Attempt to get const world transform while dirty!")
     end
     return self._worldTransform
 end

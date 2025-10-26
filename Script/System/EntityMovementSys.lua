@@ -1,5 +1,5 @@
 
-local MOD_BaseSystem = require('BaseSystem')
+local MOD_BaseSystem = require('BaseSystem').BaseSystem
 
 --- 控制实体移动的系统
 --- 这个系统会收集所有拥有MovementCMP以及TransformCMP组件的实体
@@ -11,8 +11,9 @@ EntityMovementSys.SystemTypeName = "EntityMovementSys"
 
 function EntityMovementSys:new()
     local instance = setmetatable(MOD_BaseSystem.new(self, EntityMovementSys.SystemTypeName), self)
-    instance:addComponentRequirement(require('Component.MovementCMP').MovementCMP.ComponentTypeID, true)
-    instance:addComponentRequirement(require('Component.TransformCMP').TransformCMP.ComponentTypeID, true)
+    local ComponentRequirementDesc = require('BaseSystem').ComponentRequirementDesc
+    instance:addComponentRequirement(require('Component.MovementCMP').MovementCMP.ComponentTypeID, ComponentRequirementDesc:new(true, true))
+    instance:addComponentRequirement(require('Component.TransformCMP').TransformCMP.ComponentTypeID, ComponentRequirementDesc:new(true, false))
     return instance
 end
 
@@ -26,11 +27,11 @@ function EntityMovementSys:tick(deltaTime)
         local movementCmp = self._collectedComponents['MovementCMP'][i]
         ---@type TransformCMP
         local transformCmp = self._collectedComponents['TransformCMP'][i]
-        local vecX, vecY = movementCmp:getVelocity()
+        local vecX, vecY = movementCmp:getVelocity_const()
         local dx, dy = vecX * deltaTime, vecY * deltaTime
         local affect = nil
         if type(movementCmp.getAffectMode) == 'function' then
-            affect = movementCmp:getAffectMode()
+            affect = movementCmp:getAffectMode_const()
         end
         if affect == nil or affect == "local" then
             -- apply to local transform

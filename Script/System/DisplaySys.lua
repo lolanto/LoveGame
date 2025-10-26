@@ -1,5 +1,5 @@
 
-local MOD_BaseSystem = require('BaseSystem')
+local MOD_BaseSystem = require('BaseSystem').BaseSystem
 
 ---@class DisplaySys : BaseSystem
 local DisplaySys = setmetatable({}, {__index = MOD_BaseSystem})
@@ -9,8 +9,9 @@ DisplaySys.SystemTypeName = "DisplaySys"
 
 function DisplaySys:new()
     local instance = setmetatable(MOD_BaseSystem.new(self, DisplaySys.SystemTypeName), self)
-    instance:addComponentRequirement(require('Component.DrawableCMP').DrawableCMP.ComponentTypeID, true)
-    instance:addComponentRequirement(require('Component.TransformCMP').TransformCMP.ComponentTypeID, true)
+    local ComponentRequirementDesc = require('BaseSystem').ComponentRequirementDesc
+    instance:addComponentRequirement(require('Component.DrawableCMP').DrawableCMP.ComponentTypeID, ComponentRequirementDesc:new(true, false))
+    instance:addComponentRequirement(require('Component.TransformCMP').TransformCMP.ComponentTypeID, ComponentRequirementDesc:new(true, true))
     return instance
 end
 
@@ -47,7 +48,7 @@ function DisplaySys:draw()
         local drawableCmp = pairedList[i].drawable
         ---@type TransformCMP
         local transformCmp = pairedList[i].transform
-        drawableCmp:draw(transformCmp:getWorldTransform())
+        drawableCmp:draw(transformCmp:getWorldTransform_const())
         drawCallCount = drawCallCount + 1
     end
 end

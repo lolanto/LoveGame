@@ -38,12 +38,12 @@ function MovementCMP:setAffectMode(mode)
     self._affectMode = mode
 end
 
-function MovementCMP:getAffectMode()
+function MovementCMP:getAffectMode_const()
     return self._affectMode
 end
 
 
-function MovementCMP:getVelocity()
+function MovementCMP:getVelocity_const()
     return self._velocityX, self._velocityY
 end
 

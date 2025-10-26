@@ -2,16 +2,16 @@
     CameraSetupSys.lua
     描述：摄像机设置系统
     作用：根据摄像机组件，设置当前的渲染配置
-    详细信息：
-        1. 该系统会收集拥有CameraCMP和TransformCMP组件的实体
+    详细信息�?
+        1. 该系统会收集拥有CameraCMP和TransformCMP组件的实�?
         2. 理论上只会收集一个摄像机组件
-        3. 在tick阶段，根据摄像机实体的Transform组件以及摄像机组件，计算一个完整的摄像机变换矩阵
-        4. 将计算的变换矩阵存入到RenderEnv对象中，供后续渲染使用
+        3. 在tick阶段，根据摄像机实体的Transform组件以及摄像机组件，计算一个完整的摄像机变换矩�?
+        4. 将计算的变换矩阵存入到RenderEnv对象中，供后续渲染使�?
 --]]
 
-local MOD_BaseSystem = require('BaseSystem')
+local MOD_BaseSystem = require('BaseSystem').BaseSystem
 
---- 该模块负责根据镜头组件，设置当前的渲染配置
+--- 该模块负责根据镜头组件，设置当前的渲染配�?
 ---@class CameraSetupSys : BaseSystem
 local CameraSetupSys = setmetatable({}, MOD_BaseSystem)
 CameraSetupSys.__index = CameraSetupSys
@@ -20,8 +20,9 @@ CameraSetupSys.SystemTypeName = "CameraSetupSys"
 
 function CameraSetupSys:new()
     local instance = setmetatable(MOD_BaseSystem.new(self, CameraSetupSys.SystemTypeName), self)
-    instance:addComponentRequirement(require('Component.CameraCMP').CameraCMP.ComponentTypeID, true)
-    instance:addComponentRequirement(require('Component.TransformCMP').TransformCMP.ComponentTypeID, true)
+    local ComponentRequirementDesc = require('BaseSystem').ComponentRequirementDesc
+    instance:addComponentRequirement(require('Component.CameraCMP').CameraCMP.ComponentTypeID, ComponentRequirementDesc:new(true, true))
+    instance:addComponentRequirement(require('Component.TransformCMP').TransformCMP.ComponentTypeID, ComponentRequirementDesc:new(true, true))
     return instance
 end
 
@@ -67,7 +68,7 @@ function CameraSetupSys:collect(entity)
     end
 end
 
---- 设置摄像机实体
+--- 设置摄像机实�?
 --- 这个方法会调用collect方法从entity身上收集组件
 --- 假如明确哪个entity是摄像机，可以直接调用这个方法以跳过
 function CameraSetupSys:setupCameraEntity(entity)
@@ -76,10 +77,10 @@ function CameraSetupSys:setupCameraEntity(entity)
 end
 
 --- tick
---- 根据Camera Entity的Transform组件以及摄像机组件，计算一个完整的摄像机变换矩阵
+--- 根据Camera Entity的Transform组件以及摄像机组件，计算一个完整的摄像机变换矩�?
 --- 并通过love.graphics.replaceTransform应用这个变换矩阵
 ---@param deltaTime number 距离上一帧的时间间隔，单位秒
----@param renderEnvObj RenderEnv 渲染环境对象，预留参数，目前未使用
+---@param renderEnvObj RenderEnv 渲染环境对象，预留参数，目前未使�?
 function CameraSetupSys:tick(deltaTime, renderEnvObj)
     MOD_BaseSystem.tick(self, deltaTime)
     if #self._collectedComponents['CameraCMP'] == 1 then
@@ -87,10 +88,10 @@ function CameraSetupSys:tick(deltaTime, renderEnvObj)
         local cameraCmp = self._collectedComponents['CameraCMP'][1]
         ---@type TransformCMP
         local transformCmp = self._collectedComponents['TransformCMP'][1]
-        local camPosX, camPosY = transformCmp:getTranslate()
+        local camPosX, camPosY = transformCmp:getTranslate_const()
         local camProjTransform = cameraCmp:getProjectionTransform()
-        --- 根据摄像机的位置偏移camPosX和camPosY，以及投影变换
-        --- 计算一个完整的摄像机变换矩阵
+        --- 根据摄像机的位置偏移camPosX和camPosY，以及投影变�?
+        --- 计算一个完整的摄像机变换矩�?
         local completeCamTransform = love.math.newTransform()
         completeCamTransform:translate(-camPosX, -camPosY)
         local d_mat1_1, d_mat1_2, d_mat1_3, d_mat1_4

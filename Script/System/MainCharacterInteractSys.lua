@@ -1,5 +1,5 @@
 
-local MOD_BaseSystem = require('BaseSystem')
+local MOD_BaseSystem = require('BaseSystem').BaseSystem
 
 --- 控制主角交互的逻辑
 ---@class MainCharacterInteractSys : BaseSystem
@@ -12,8 +12,9 @@ MainCharacterInteractSys.WalkSpeed = 100.0  -- 主角行走速度，单位m/s
 
 function MainCharacterInteractSys:new()
     local instance = setmetatable(MOD_BaseSystem.new(self, MainCharacterInteractSys.SystemTypeName), self)
-    instance:addComponentRequirement(require('Component.MainCharacterControllerCMP').MainCharacterControllerCMP.ComponentTypeID, true)
-    instance:addComponentRequirement(require('Component.MovementCMP').MovementCMP.ComponentTypeID, true)
+    local ComponentRequirementDesc = require('BaseSystem').ComponentRequirementDesc
+    instance:addComponentRequirement(require('Component.MainCharacterControllerCMP').MainCharacterControllerCMP.ComponentTypeID, ComponentRequirementDesc:new(true, true))
+    instance:addComponentRequirement(require('Component.MovementCMP').MovementCMP.ComponentTypeID, ComponentRequirementDesc:new(true, false))
 
     instance._userInteractController = nil -- UserInteractController 用户交互控制器
     return instance
