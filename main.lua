@@ -50,6 +50,7 @@ function love.load()
     local entityCam = MOD_Entity:new('camera')
     entityCam:boundComponent(require('Component.CameraCMP').CameraCMP:new())
     entityCam:boundComponent(require('Component.TransformCMP').TransformCMP:new())
+    entityCam:boundComponent(require('Component.DrawableComponents.DebugTileTexture').DebugTileTextureCMP:new())
     table.insert(entities, entityCam)
     entity:boundChildEntity(entityCam)
 
@@ -64,10 +65,10 @@ function love.load()
     table.insert(entities, entity2)
     entity:boundChildEntity(entity2)
 
-    local entityBackground = MOD_Entity:new('background')
-    entityBackground:boundComponent(require('Component.DrawableComponents.DebugTileTexture').DebugTileTextureCMP:new())
-    entityBackground:boundComponent(require('Component.TransformCMP').TransformCMP:new())
-    table.insert(entities, entityBackground)
+    -- local entityBackground = MOD_Entity:new('background')
+    -- entityBackground:boundComponent(require('Component.DrawableComponents.DebugTileTexture').DebugTileTextureCMP:new())
+    -- entityBackground:boundComponent(require('Component.TransformCMP').TransformCMP:new())
+    -- table.insert(entities, entityBackground)
 
     -- 示例：创建环绕固定点巡逻的实体
     local entityPatrolCircular = MOD_Entity:new('patrol_circular')
