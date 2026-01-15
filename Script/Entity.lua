@@ -26,6 +26,12 @@ function Entity:new(nameOfEntity)
     return instance
 end
 
+--- 获取实体的名称
+--- @return string
+function Entity:getName_const()
+    return self._nameOfEntity
+end
+
 --- 绑定一个组件会检查是否已经绑定了同类组件并报错
 --- @param inputComponent BaseComponent 需要绑定的组件
 --- @return nil
@@ -74,7 +80,7 @@ end
 --- 获取指定类型的组件对象
 --- @param componentType string|number 要获取的组件的信息，名称或者ID
 --- @return BaseComponent|nil 返回组件对象，或者找不到返回nil
-function Entity:getComponent(componentType)
+function Entity:getComponent_const(componentType)
     ---@type number
     local cmpID = nil
     ---@type string
@@ -93,15 +99,23 @@ function Entity:getComponent(componentType)
     -- try exact id first
     local exact = self._components[cmpID]
     if exact ~= nil then
-        return exact
+        return require("utils.ReadOnly").makeReadOnly(exact)
     end
     -- 如果没有精确匹配，则将这个数字视作父类的ID，查找派生类组件
     for _, comp in pairs(self._components) do
         if comp ~= nil and comp:isInstanceOf(cmpName) then
-            return comp
+            return require("utils.ReadOnly").makeReadOnly(comp)
         end
     end
     return nil
+end
+
+function Entity:getComponent(componentType)
+    local comp = self:getComponent_const(componentType)
+    if comp ~= nil then
+        comp = comp:const_cast()
+    end
+    return comp
 end
 
 --- 判断是否包含指定的组件
@@ -171,6 +185,10 @@ end
 --- 获取父Entity
 function Entity:getParent()
     return self._parentEntity
+end
+
+function Entity:getParent_const()
+    return require("utils.ReadOnly").makeReadOnly(self._parentEntity)
 end
 
 --- 获取子Entity列表

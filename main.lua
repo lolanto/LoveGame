@@ -34,6 +34,8 @@ function love.load()
     systems['EntityMovementSys'] = require('System.EntityMovementSys').EntityMovementSys:new()
     systems['CameraSetupSys'] = require('System.CameraSetupSys').CameraSetupSys:new()
     systems['DisplaySys'] = require('System.DisplaySys').DisplaySys:new()
+    systems['PhysicSys'] = require('System.PhysicSys').PhysicSys:new()
+    systems['PhysicVisualizeSys'] = require('System.PhysicSys').PhysicVisualizeSys:new()
 
     local image = love.graphics.newImage("Resources/characters.png")
     print(image)
@@ -45,6 +47,8 @@ function love.load()
     entity:boundComponent(require('Component.MainCharacterControllerCMP').MainCharacterControllerCMP:new())
     entity:boundComponent(require('Component.MovementCMP').MovementCMP:new())
     entity:boundComponent(require('Component.CameraCMP').CameraCMP:new())
+    entity:boundComponent(require('Component.PhysicCMP').PhysicCMP:new(systems['PhysicSys']:getWorld()
+        , {shape = require('Component.PhysicCMP').Shape.static.Rectangle(1, 1, 0, 0, 0, 1)}))
     table.insert(entities, entity)
 
     local entityCam = MOD_Entity:new('camera')
@@ -54,42 +58,50 @@ function love.load()
     table.insert(entities, entityCam)
     entity:boundChildEntity(entityCam)
 
-    local entity2 = MOD_Entity:new('debug')
-    entity2:boundComponent(require('Component.DrawableComponents.DebugColorBlockCMP').DebugColorBlockCMP:new({255,0,0,255}, 1, 1))
-    entity2:getComponent('DebugColorBlockCMP'):setLayer(-1) -- 设置这个组件的绘制层级为-1
-    entity2:boundComponent(require('Component.TransformCMP').TransformCMP:new())
-    -- entity2:getComponent('TransformCMP'):setTranslate(1.5, 0)
-    entity2:boundComponent(require('Component.MovementCMP').MovementCMP:new())
-    -- local PatrolType = require('Component.Gameplay.PatrolCMP').PatrolType
-    -- entity2:boundComponent(require('Component.Gameplay.PatrolCMP').PatrolCMP:new(PatrolType.CIRCULAR_POINT, require('Component.Gameplay.PatrolCMP').PatrolTypeParam_CircularPoint:new(0, 0, 1.5, 20)))
-    table.insert(entities, entity2)
-    entity:boundChildEntity(entity2)
+    -- local entity2 = MOD_Entity:new('debug')
+    -- entity2:boundComponent(require('Component.DrawableComponents.DebugColorBlockCMP').DebugColorBlockCMP:new({255,0,0,255}, 1, 1))
+    -- entity2:getComponent('DebugColorBlockCMP'):setLayer(-1) -- 设置这个组件的绘制层级为-1
+    -- entity2:boundComponent(require('Component.TransformCMP').TransformCMP:new())
+    -- entity2:boundComponent(require('Component.MovementCMP').MovementCMP:new())
+    -- table.insert(entities, entity2)
+    -- entity:boundChildEntity(entity2)
 
-    -- local entityBackground = MOD_Entity:new('background')
-    -- entityBackground:boundComponent(require('Component.DrawableComponents.DebugTileTexture').DebugTileTextureCMP:new())
-    -- entityBackground:boundComponent(require('Component.TransformCMP').TransformCMP:new())
-    -- table.insert(entities, entityBackground)
+    local entity3 = MOD_Entity:new('phyDebug')
+    entity3:boundComponent(require('Component.PhysicCMP').PhysicCMP:new(systems['PhysicSys']:getWorld()
+        , {shape = require('Component.PhysicCMP').Shape.static.Rectangle(1, 1, 0, 0, 0, 1)}))
+    entity3:boundComponent(require('Component.TransformCMP').TransformCMP:new())
+    entity3:getComponent('TransformCMP'):setWorldPosition(0, -10)
+    table.insert(entities, entity3)
 
-    -- 示例：创建环绕固定点巡逻的实体
-    local entityPatrolCircular = MOD_Entity:new('patrol_circular')
-    entityPatrolCircular:boundComponent(require('Component.DrawableComponents.DebugColorBlockCMP').DebugColorBlockCMP:new({255,255,0,255}, 1, 1))
-    entityPatrolCircular:boundComponent(require('Component.TransformCMP').TransformCMP:new())
-    entityPatrolCircular:getComponent('TransformCMP'):setTranslate(2, 1.5) -- 初始位置
-    entityPatrolCircular:boundComponent(require('Component.MovementCMP').MovementCMP:new())
-    local PatrolType = require('Component.Gameplay.PatrolCMP').PatrolType
-    entityPatrolCircular:boundComponent(require('Component.Gameplay.PatrolCMP').PatrolCMP:new(PatrolType.CIRCULAR_ENTITY
-        , require('Component.Gameplay.PatrolCMP').PatrolTypeParam_CircularEntity:new(entity, 1, 2)))
-    -- table.insert(entities, entityPatrolCircular)
+    local entity3_deb = MOD_Entity:new('debug')
+    entity3_deb:boundComponent(require('Component.DrawableComponents.DebugColorBlockCMP').DebugColorBlockCMP:new({255,0,0,255}, 1, 1))
+    entity3_deb:getComponent('DebugColorBlockCMP'):setLayer(-1) -- 设置这个组件的绘制层级为-1
+    entity3_deb:boundComponent(require('Component.TransformCMP').TransformCMP:new())
+    entity3_deb:boundComponent(require('Component.MovementCMP').MovementCMP:new())
+    table.insert(entities, entity3_deb)
+    entity3:boundChildEntity(entity3_deb)
 
-    -- 示例：创建直线往返巡逻的实体
-    local entityPatrolLinear = MOD_Entity:new('patrol_linear')
-    entityPatrolLinear:boundComponent(require('Component.DrawableComponents.DebugColorBlockCMP').DebugColorBlockCMP:new({0,255,255,255}, 1, 1))
-    entityPatrolLinear:boundComponent(require('Component.TransformCMP').TransformCMP:new())
-    entityPatrolLinear:getComponent('TransformCMP'):setTranslate(10, 10)
-    entityPatrolLinear:boundComponent(require('Component.MovementCMP').MovementCMP:new())
-    local PatrolTypeParam_LinearPatrolPoints = require('Component.Gameplay.PatrolCMP').PatrolTypeParam_LinearPatrolPoints
-    entityPatrolLinear:boundComponent(require('Component.Gameplay.PatrolCMP').PatrolCMP:new(PatrolType.LINEAR_PATROL_POINTS, PatrolTypeParam_LinearPatrolPoints:new(10, 10, 10, 10, 50)))
-    table.insert(entities, entityPatrolLinear)
+    -- 添加静态地面：宽 30，高 1，放在 y=0
+    local ground = MOD_Entity:new('ground')
+    ground:boundComponent(require('Component.PhysicCMP').PhysicCMP:new(
+        systems['PhysicSys']:getWorld(),
+        {
+            bodyType = "static",
+            shape = require('Component.PhysicCMP').Shape.static.Rectangle(15, 1, 0, 0, 0, 0),
+            fixture = { friction = 0.8, restitution = 0.0 }
+        }
+    ))
+    ground:boundComponent(require('Component.TransformCMP').TransformCMP:new())
+    ground:getComponent('TransformCMP'):setWorldPosition(0, 5)
+    table.insert(entities, ground)
+
+    local ground_deb = MOD_Entity:new('debug')
+    ground_deb:boundComponent(require('Component.DrawableComponents.DebugColorBlockCMP').DebugColorBlockCMP:new({0, 0, 255, 255}, 15, 1))
+    ground_deb:getComponent('DebugColorBlockCMP'):setLayer(-1) -- 设置这个组件的绘制层级为-1
+    ground_deb:boundComponent(require('Component.TransformCMP').TransformCMP:new())
+    ground_deb:boundComponent(require('Component.MovementCMP').MovementCMP:new())
+    table.insert(entities, ground_deb)
+    ground:boundChildEntity(ground_deb)
 
     mainCharacterEntity = entity
     mainCameraEntity = entity
@@ -163,6 +175,8 @@ function love.update(deltaTime)
     systems['EntityMovementSys']:preCollect()
     systems['CameraSetupSys']:preCollect()
     systems['DisplaySys']:preCollect()
+    systems['PhysicSys']:preCollect()
+    systems['PhysicVisualizeSys']:preCollect()
     
     for i = 1, #thisFrameEntities do
         local entity = thisFrameEntities[i]
@@ -173,6 +187,8 @@ function love.update(deltaTime)
             systems['EntityMovementSys']:collect(entity)
             systems['CameraSetupSys']:collect(entity)
             systems['DisplaySys']:collect(entity)
+            systems['PhysicSys']:collect(entity)
+            systems['PhysicVisualizeSys']:collect(entity)
         end
     end
 
@@ -180,6 +196,10 @@ function love.update(deltaTime)
     systems['PatrolSys']:tick(deltaTime)
     systems['EntityMovementSys']:tick(deltaTime)
     systems['TransformUpdateSys']:tick(deltaTime)
+
+    systems['PhysicSys']:tick(deltaTime)
+    systems['TransformUpdateSys']:tick(deltaTime)
+    
     ---@cast systems['CameraSetupSys'] CameraSetupSys
     systems['CameraSetupSys']:tick(deltaTime)
     systems['DisplaySys']:tick(deltaTime)
@@ -190,6 +210,7 @@ end
 function love.draw()
     love.graphics.replaceTransform(renderEnv:getCameraProj())
     systems['DisplaySys']:draw()
+    -- systems['PhysicVisualizeSys']:draw()
 end
 
 function love.mousepressed(x, y, button, istouch, presses)

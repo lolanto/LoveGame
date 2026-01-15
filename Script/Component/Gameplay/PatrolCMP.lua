@@ -1,3 +1,28 @@
+--[[
+
+    -- 示例：创建直线往返巡逻的实体
+    local entityPatrolLinear = MOD_Entity:new('patrol_linear')
+    entityPatrolLinear:boundComponent(require('Component.DrawableComponents.DebugColorBlockCMP').DebugColorBlockCMP:new({0,255,255,255}, 1, 1))
+    entityPatrolLinear:boundComponent(require('Component.TransformCMP').TransformCMP:new())
+    entityPatrolLinear:getComponent('TransformCMP'):setPosition(10, 10)
+    entityPatrolLinear:boundComponent(require('Component.MovementCMP').MovementCMP:new())
+    local PatrolTypeParam_LinearPatrolPoints = require('Component.Gameplay.PatrolCMP').PatrolTypeParam_LinearPatrolPoints
+    entityPatrolLinear:boundComponent(require('Component.Gameplay.PatrolCMP').PatrolCMP:new(PatrolType.LINEAR_PATROL_POINTS, PatrolTypeParam_LinearPatrolPoints:new(10, 10, 10, 10, 50)))
+
+
+    -- 示例：创建环绕固定点巡逻的实体
+    local entityPatrolCircular = MOD_Entity:new('patrol_circular')
+    entityPatrolCircular:boundComponent(require('Component.DrawableComponents.DebugColorBlockCMP').DebugColorBlockCMP:new({255,255,0,255}, 1, 1))
+    entityPatrolCircular:boundComponent(require('Component.TransformCMP').TransformCMP:new())
+    entityPatrolCircular:getComponent('TransformCMP'):setPosition(2, 1.5) -- 初始位置
+    entityPatrolCircular:boundComponent(require('Component.MovementCMP').MovementCMP:new())
+    local PatrolType = require('Component.Gameplay.PatrolCMP').PatrolType
+    entityPatrolCircular:boundComponent(require('Component.Gameplay.PatrolCMP').PatrolCMP:new(PatrolType.CIRCULAR_ENTITY
+        , require('Component.Gameplay.PatrolCMP').PatrolTypeParam_CircularEntity:new(entity, 1, 2)))
+
+--]]
+
+
 local MOD_BaseComponent = require('BaseComponent').BaseComponent
 
 --- 巡逻类型枚举

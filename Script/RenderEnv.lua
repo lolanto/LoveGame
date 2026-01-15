@@ -24,7 +24,8 @@ function RenderEnv:new()
     local instance = setmetatable({}, RenderEnv)
     instance._cameraProj = nil
     instance._viewWidth = 10
-    instance._pixelsPerMeter = love.graphics.getPixelWidth() / instance._viewWidth
+    -- instance._pixelsPerMeter = love.graphics.getPixelWidth() / instance._viewWidth
+    instance._pixelsPerMeter = 30  -- 默认30像素每米
     return instance
 end
 
@@ -42,7 +43,7 @@ end
 
 function RenderEnv:setViewWidth(viewWidth)
     self._viewWidth = viewWidth
-    self._pixelsPerMeter = love.graphics.getPixelWidth() / self._viewWidth
+    -- self._pixelsPerMeter = love.graphics.getPixelWidth() / self._viewWidth
 end
 
 function RenderEnv:getViewWidth_const()

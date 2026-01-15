@@ -13,7 +13,7 @@ CameraCMP.ComponentTypeID = MOD_BaseComponent.RegisterType(CameraCMP.ComponentTy
 function CameraCMP:new()
     local instance = setmetatable(MOD_BaseComponent.new(self, CameraCMP.ComponentTypeName), self)
     local screenScale = love.graphics.getPixelWidth() / love.graphics.getPixelHeight()
-    instance._viewWidthMeters = 40
+    instance._viewWidthMeters = 10
     instance._viewHeightMeters = instance._viewWidthMeters / screenScale
     return instance
 end

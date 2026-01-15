@@ -7,15 +7,36 @@
 ---@param allowedPattern? string 指定允许的访问模式，格式是正则表达式
 ---@return any 只读包装器
 local function makeReadOnly(obj, allowedPattern)
+    if obj == nil then
+        return nil
+    end
+    if obj.check_is_const and type(obj.check_is_const) == "function" and obj:check_is_const() then
+        -- 已经是只读对象，直接返回
+        return obj
+    end
     allowedPattern = allowedPattern or "^.*_const$"  -- 默认允许以 _const 结尾的方法
-    assert(obj ~= nil and type(allowedPattern) == "string", "Invalid arguments to makeReadOnly")
+    assert(type(allowedPattern) == "string", "Invalid arguments to makeReadOnly")
 
     local wrapper = {}
+
+    local const_cast = function(t)
+        return obj
+    end
+
+    local check_is_const = function(t)
+        return true
+    end
 
     -- 设置元表
     local mt = {
         __index = function(t, k)
             if type(k) == "string" then
+                if k == "const_cast" then
+                    return const_cast
+                end
+                if k == "check_is_const" then
+                    return check_is_const
+                end
                 -- 检查方法是否匹配允许模式
                 if k:match(allowedPattern) then
                     local method = obj[k]

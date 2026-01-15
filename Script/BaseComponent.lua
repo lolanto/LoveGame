@@ -24,6 +24,12 @@ function BaseComponent:getEntity()
     return self._entity
 end
 
+--- 获取当前组件绑定的实体，只读版，但暂时没有发挥作用
+--- @return Entity|nil
+function BaseComponent:getEntity_const()
+    return require("utils.ReadOnly").makeReadOnly(self._entity)
+end
+
 --- 注册一个类型信息，并返回这个类型的类型id
 --- 假如类型已经存在会抛出异常
 --- @param typeName string

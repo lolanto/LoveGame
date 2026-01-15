@@ -40,8 +40,8 @@ function DebugTileTextureCMP:draw(transform)
 
     
     -- screen size in pixels
-    local screenW = love.graphics.getWidth()
-    local screenH = love.graphics.getHeight()
+    local screenW = love.graphics.getWidth() * 2
+    local screenH = love.graphics.getHeight() * 2
 
     local startOffsetX = math.floor(translateX - (screenW / 2) / tileDrawSizePx)
     local startOffsetY = math.floor(translateY - (screenH / 2) / tileDrawSizePx)

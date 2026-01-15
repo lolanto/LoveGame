@@ -35,12 +35,9 @@ function EntityMovementSys:tick(deltaTime)
         end
         if affect == nil or affect == "local" then
             -- apply to local transform
-            transformCmp:addTranslate(dx, dy)
+            transformCmp:translate(dx, dy)
         else
-            -- cache as pending world-space delta on the corresponding TransformCMP
-            if transformCmp ~= nil and type(transformCmp.addPendingWorldTranslate) == 'function' then
-                transformCmp:addPendingWorldTranslate(dx, dy)
-            end
+            transformCmp:translateWorldPosition(dx, dy)
         end
     end
 end
