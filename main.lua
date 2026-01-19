@@ -36,6 +36,7 @@ function love.load()
     systems['DisplaySys'] = require('System.DisplaySys').DisplaySys:new()
     systems['PhysicSys'] = require('System.PhysicSys').PhysicSys:new()
     systems['PhysicVisualizeSys'] = require('System.PhysicSys').PhysicVisualizeSys:new()
+    systems['TimeRewindSys'] = require('System.Gameplay.TimeRewindSys').TimeRewindSys:new()
 
     local image = love.graphics.newImage("Resources/characters.png")
     print(image)
@@ -81,6 +82,34 @@ function love.load()
     table.insert(entities, entity3_deb)
     entity3:boundChildEntity(entity3_deb)
 
+    -- 添加3个下落并堆叠在一起的球体
+    local ballColors = {
+        {255, 0, 0, 255},   -- Red
+        {0, 255, 0, 255},   -- Green
+        {0, 0, 255, 255}    -- Blue
+    }
+    local ballPositions = {
+        {-0.5, -5},
+        {0, -6.1},
+        {0.5, -5}
+    }
+    for i = 1, 3 do
+        local ballEntity = MOD_Entity:new('ball' .. tostring(i))
+        ballEntity:boundComponent(require('Component.DrawableComponents.DebugColorCircleCMP').DebugColorCircleCMP:new(ballColors[i], 0.5))
+        ballEntity:boundComponent(require('Component.TransformCMP').TransformCMP:new())
+        ballEntity:getComponent('TransformCMP'):setWorldPosition(ballPositions[i][1], ballPositions[i][2])
+        ballEntity:boundComponent(require('Component.MovementCMP').MovementCMP:new())
+        ballEntity:boundComponent(require('Component.PhysicCMP').PhysicCMP:new(
+            systems['PhysicSys']:getWorld(),
+            {
+                shape = require('Component.PhysicCMP').Shape.static.Circle(0.5, 0, 0, 1),
+                fixture = { friction = 0.5, restitution = 0.3 }
+            }
+        ))
+        table.insert(entities, ballEntity)
+    end
+
+    -- 添加场景边界内容
     -- 添加静态地面：宽 30，高 1，放在 y=0
     local ground = MOD_Entity:new('ground')
     ground:boundComponent(require('Component.PhysicCMP').PhysicCMP:new(
@@ -102,6 +131,49 @@ function love.load()
     ground_deb:boundComponent(require('Component.MovementCMP').MovementCMP:new())
     table.insert(entities, ground_deb)
     ground:boundChildEntity(ground_deb)
+
+    -- 添加两侧墙面
+    local wallLeft = MOD_Entity:new('wallLeft')
+    wallLeft:boundComponent(require('Component.PhysicCMP').PhysicCMP:new(
+        systems['PhysicSys']:getWorld(),
+        {
+            bodyType = "static",
+            shape = require('Component.PhysicCMP').Shape.static.Rectangle(1, 10, 0, 0, 0, 0),
+            fixture = { friction = 0.8, restitution = 0.0 }
+        }
+    ))
+    wallLeft:boundComponent(require('Component.TransformCMP').TransformCMP:new())
+    wallLeft:getComponent('TransformCMP'):setWorldPosition(-7.5, 0)
+    table.insert(entities, wallLeft)
+
+    local wallLeft_deb = MOD_Entity:new('debug')
+    wallLeft_deb:boundComponent(require('Component.DrawableComponents.DebugColorBlockCMP').DebugColorBlockCMP:new({0, 255, 0, 255}, 1, 10))
+    wallLeft_deb:getComponent('DebugColorBlockCMP'):setLayer(-1) --
+    wallLeft_deb:boundComponent(require('Component.TransformCMP').TransformCMP:new())
+    wallLeft_deb:boundComponent(require('Component.MovementCMP').MovementCMP:new())
+    table.insert(entities, wallLeft_deb)
+    wallLeft:boundChildEntity(wallLeft_deb)
+
+    local wallRight = MOD_Entity:new('wallRight')
+    wallRight:boundComponent(require('Component.PhysicCMP').PhysicCMP:new(
+        systems['PhysicSys']:getWorld(),
+        {
+            bodyType = "static",
+            shape = require('Component.PhysicCMP').Shape.static.Rectangle(1, 10, 0, 0, 0, 0),
+            fixture = { friction = 0.8, restitution = 0.0 }
+        }
+    ))
+    wallRight:boundComponent(require('Component.TransformCMP').TransformCMP:new())
+    wallRight:getComponent('TransformCMP'):setWorldPosition(7.5, 0)
+    table.insert(entities, wallRight)
+
+    local wallRight_deb = MOD_Entity:new('debug')
+    wallRight_deb:boundComponent(require('Component.DrawableComponents.DebugColorBlockCMP').DebugColorBlockCMP:new({0, 255, 0, 255}, 1, 10))
+    wallRight_deb:getComponent('DebugColorBlockCMP'):setLayer(-1) --
+    wallRight_deb:boundComponent(require('Component.TransformCMP').TransformCMP:new())
+    wallRight_deb:boundComponent(require('Component.MovementCMP').MovementCMP:new())
+    table.insert(entities, wallRight_deb)
+    wallRight:boundChildEntity(wallRight_deb)
 
     mainCharacterEntity = entity
     mainCameraEntity = entity
@@ -177,6 +249,7 @@ function love.update(deltaTime)
     systems['DisplaySys']:preCollect()
     systems['PhysicSys']:preCollect()
     systems['PhysicVisualizeSys']:preCollect()
+    systems['TimeRewindSys']:preCollect()
     
     for i = 1, #thisFrameEntities do
         local entity = thisFrameEntities[i]
@@ -189,16 +262,31 @@ function love.update(deltaTime)
             systems['DisplaySys']:collect(entity)
             systems['PhysicSys']:collect(entity)
             systems['PhysicVisualizeSys']:collect(entity)
+            systems['TimeRewindSys']:collect(entity)
         end
     end
 
-    systems['MainCharacterInteractSys']:tick(deltaTime)
-    systems['PatrolSys']:tick(deltaTime)
-    systems['EntityMovementSys']:tick(deltaTime)
-    systems['TransformUpdateSys']:tick(deltaTime)
+    systems['TimeRewindSys']:tick(deltaTime)
+    
+    if systems['TimeRewindSys']:getIsRewinding() then
+        -- 回溯模式：跳过正常的逻辑更新和物理模拟
+        -- 仅更新变换和摄像机/显示系统
+        
+        -- 确保Transform Hierarchy正确计算
+        systems['TransformUpdateSys']:tick(deltaTime)
+        
+        -- 强制同步PhysicsBody到回溯的位置，确保Debug绘制和状态正确
+        systems['TimeRewindSys']:syncPhysicsBodies()
+        
+    else
+        systems['MainCharacterInteractSys']:tick(deltaTime)
+        systems['PatrolSys']:tick(deltaTime)
+        systems['EntityMovementSys']:tick(deltaTime)
+        systems['TransformUpdateSys']:tick(deltaTime)
 
-    systems['PhysicSys']:tick(deltaTime)
-    systems['TransformUpdateSys']:tick(deltaTime)
+        systems['PhysicSys']:tick(deltaTime)
+        systems['TransformUpdateSys']:tick(deltaTime)
+    end
     
     ---@cast systems['CameraSetupSys'] CameraSetupSys
     systems['CameraSetupSys']:tick(deltaTime)

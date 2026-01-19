@@ -30,6 +30,27 @@ function BaseComponent:getEntity_const()
     return require("utils.ReadOnly").makeReadOnly(self._entity)
 end
 
+--- [TimeRewind] 获取组件的回溯状态
+--- 返回包含组件关键数据的表，若不支持回溯则返回nil
+--- @return table|nil
+function BaseComponent:getRewindState_const()
+    return nil
+end
+
+--- [TimeRewind] 恢复组件的回溯状态
+--- @param state table 从getRewindState获取的状态数据
+function BaseComponent:restoreRewindState(state)
+    -- default do nothing
+end
+
+--- [TimeRewind] 插值回溯状态 (混合两个状态)
+--- @param stateA table 较早的状态
+--- @param stateB table 较晚的状态
+--- @param t number 插值因子 [0, 1]
+function BaseComponent:lerpRewindState(stateA, stateB, t)
+    self:restoreRewindState(stateA)
+end
+
 --- 注册一个类型信息，并返回这个类型的类型id
 --- 假如类型已经存在会抛出异常
 --- @param typeName string

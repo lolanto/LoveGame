@@ -315,6 +315,47 @@ function TransformCMP:getParentTransform()
     return love.math.newTransform()
 end
 
+-- [TimeRewind] 获取组件的回溯状态
+-- 返回包含组件关键数据的表，若不支持回溯则返回nil
+function TransformCMP:getRewindState_const()
+    return {
+        x = self._posX,
+        y = self._posY,
+        r = self._rotate,
+        sx = self._scaleX,
+        sy = self._scaleY
+    }
+end
+
+function TransformCMP:restoreRewindState(state)
+    if not state then return end
+    self:setPosition(state.x, state.y)
+    self:setRotate(state.r)
+    self:setScale(state.sx, state.sy)
+end
+
+function TransformCMP:lerpRewindState(stateA, stateB, t)
+    if not stateA or not stateB then return end
+    
+    -- Linear interpolation for position and scale
+    local x = stateA.x + (stateB.x - stateA.x) * t
+    local y = stateA.y + (stateB.y - stateA.y) * t
+    local sx = stateA.sx + (stateB.sx - stateA.sx) * t
+    local sy = stateA.sy + (stateB.sy - stateA.sy) * t
+    
+    -- Handle rotation wrapping for interpolation
+    local rA = stateA.r
+    local rB = stateB.r
+    local diff = rB - rA
+    while diff < -math.pi do diff = diff + 2 * math.pi end
+    while diff > math.pi do diff = diff - 2 * math.pi end
+    local r = rA + diff * t
+    
+    self:setPosition(x, y)
+    self:setRotate(r)
+    self:setScale(sx, sy)
+end
+
 return {
     TransformCMP = TransformCMP,
 }

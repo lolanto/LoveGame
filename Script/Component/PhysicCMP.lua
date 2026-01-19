@@ -229,7 +229,51 @@ function PhysicCMP:getBodyRotate()
     return nil
 end
 
+--- [TimeRewind] 获取组件的回溯状态
+--- 返回包含组件关键数据的表，若不支持回溯则返回nil
+function PhysicCMP:getRewindState_const()
+    if not self._body or self._body:isDestroyed() then return nil end
+    local vx, vy = self._body:getLinearVelocity()
+    local av = self._body:getAngularVelocity()
+    return {
+        vx = vx,
+        vy = vy,
+        angVel = av
+    }
+end
 
+function PhysicCMP:restoreRewindState(state)
+    if not state then return end
+    if not self._body or self._body:isDestroyed() then return end
+    
+    self._body:setLinearVelocity(state.vx, state.vy)
+    self._body:setAngularVelocity(state.angVel)
+end
+
+function PhysicCMP:lerpRewindState(stateA, stateB, t)
+    if not self._body or self._body:isDestroyed() then return end
+    if not stateA or not stateB then return end
+
+    -- 线性插值线性速度
+    local vx = stateA.vx + (stateB.vx - stateA.vx) * t
+    local vy = stateA.vy + (stateB.vy - stateA.vy) * t
+    
+    -- 线性插值角速度
+    local angVel = stateA.angVel + (stateB.angVel - stateA.angVel) * t
+
+    self._body:setLinearVelocity(vx, vy)
+    self._body:setAngularVelocity(angVel)
+end
+
+function PhysicCMP:syncBodyFromTransform(transformCmp)
+    if not self._body or self._body:isDestroyed() then return end
+    if not transformCmp then return end
+    
+    local x, y = transformCmp:getWorldPosition_const()
+    local r = transformCmp:getWorldRotate_const()
+    self._body:setPosition(x, y)
+    self._body:setAngle(r)
+end
 
 return {
     PhysicCMP = PhysicCMP,
