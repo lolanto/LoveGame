@@ -114,6 +114,7 @@ end
 --- 实现时间回溯接口
 --- @return table 回溯数据
 function AnimationCMP:getRewindState_const()
+    assert(self._curFrameIdx >= 1 and self._curFrameIdx <= self._frameCount, "Invalid curFrameIdx in AnimationCMP getRewindState_const!")
     return {
         curFrameIdx = self._curFrameIdx,
         timeForNextFrame = self._timeForNextFrame
@@ -130,9 +131,31 @@ end
 
 
 function AnimationCMP:lerpRewindState(stateA, stateB, t)
-    -- AnimationCMP不支持插值回溯
-    self._curFrameIdx = stateB.curFrameIdx
-    self._timeForNextFrame = stateB.timeForNextFrame
+    if not stateA or not stateB then return end
+
+    if stateA.curFrameIdx == stateB.curFrameIdx then
+        -- 同一帧，直接线性插值时间
+        self._curFrameIdx = stateA.curFrameIdx
+        self._timeForNextFrame = stateA.timeForNextFrame + (stateB.timeForNextFrame - stateA.timeForNextFrame) * t
+    else
+        -- 不同帧，计算时间差
+        -- 计算两个state之间的时间差
+        assert(self._invFrameRate >= stateB.timeForNextFrame and self._invFrameRate >= stateA.timeForNextFrame, "Invalid frame rate settings in AnimationCMP lerpRewindState!")
+        local timeBetweenStates = (self._invFrameRate - stateB.timeForNextFrame) + stateA.timeForNextFrame
+        assert(timeBetweenStates >= 0 and timeBetweenStates <= self._invFrameRate, "Invalid time between states in AnimationCMP lerpRewindState!")
+        if timeBetweenStates * t >= stateA.timeForNextFrame then
+            -- 已经切换到下一帧
+            self._curFrameIdx = stateB.curFrameIdx
+            self._timeForNextFrame = self._invFrameRate - (timeBetweenStates * t - stateA.timeForNextFrame)
+        else
+            -- 仍然在当前帧
+            self._curFrameIdx = stateA.curFrameIdx
+            self._timeForNextFrame = stateA.timeForNextFrame - timeBetweenStates * t
+        end
+    end
+
+    assert(self._curFrameIdx >= 1 and self._curFrameIdx <= self._frameCount, "Invalid curFrameIdx in AnimationCMP lerpRewindState!")    
+
 end
 
 return {
