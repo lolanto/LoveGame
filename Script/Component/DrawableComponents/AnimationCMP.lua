@@ -103,11 +103,36 @@ end
 function AnimationCMP:update(deltaTime)
     local newTimeForNextFrame = self._timeForNextFrame - deltaTime
     if newTimeForNextFrame < 0 then
-        self._curFrameIdx = math.fmod((self._curFrameIdx + 1), self._frameCount) + 1
+        self._curFrameIdx = (self._curFrameIdx % self._frameCount) + 1
         self._timeForNextFrame = self._invFrameRate + newTimeForNextFrame
     else
         self._timeForNextFrame = newTimeForNextFrame
     end
+end
+
+
+--- 实现时间回溯接口
+--- @return table 回溯数据
+function AnimationCMP:getRewindState_const()
+    return {
+        curFrameIdx = self._curFrameIdx,
+        timeForNextFrame = self._timeForNextFrame
+    }
+end
+
+--- 从回溯数据中恢复状态
+--- @param state table 回溯数据
+--- @return nil
+function AnimationCMP:restoreFromRewindState(state)
+    self._curFrameIdx = state.curFrameIdx
+    self._timeForNextFrame = state.timeForNextFrame
+end
+
+
+function AnimationCMP:lerpRewindState(stateA, stateB, t)
+    -- AnimationCMP不支持插值回溯
+    self._curFrameIdx = stateB.curFrameIdx
+    self._timeForNextFrame = stateB.timeForNextFrame
 end
 
 return {
