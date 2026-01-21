@@ -92,9 +92,27 @@ function CameraSetupSys:tick(deltaTime)
         renderEnvObj:setViewWidth(cameraCmp:getViewWidthMeters_const())
 
         local camProjTransform = cameraCmp:getProjectionTransform()
-        --- 根据摄像机的位置偏移camPosX和camPosY，以及摄像机的投影矩阵
         --- 计算一个完整的摄像机变换矩阵
-        local completeCamTransform = transformCmp:getWorldTransform_const():inverse()
+        local camWorldTransform = transformCmp:getWorldTransform_const()
+        --- 将completeCamTransform拆分出来，将里面的旋转部分的变量替换为摄像机组件内的旋转变量
+        --- 从世界变换矩阵中分解出位置、旋转、缩放属性
+        local f_mat1_1, f_mat1_2, f_mat1_3, f_mat1_4
+                , f_mat2_1, f_mat2_2, f_mat2_3, f_mat2_4
+                , f_mat3_1, f_mat3_2, f_mat3_3, f_mat3_4
+                , f_mat4_1, f_mat4_2, f_mat4_3, f_mat4_4 = camWorldTransform:getMatrix()
+        local _worldPosX = f_mat1_4
+        local _worldPosY = f_mat2_4
+        local _worldScaleX = math.sqrt(f_mat1_1 * f_mat1_1 + f_mat2_1 * f_mat2_1)
+        local _worldScaleY = math.sqrt(f_mat1_2 * f_mat1_2 + f_mat2_2 * f_mat2_2)
+        local _worldRotate = math.atan2(f_mat2_1, f_mat1_1)
+        --- 重新计算完整的摄像机变换矩阵，将旋转部分替换为摄像机组件内的旋转变量
+        camWorldTransform:setMatrix(
+            _worldScaleX, 0, 0, _worldPosX,
+            0,  _worldScaleY, 0, _worldPosY,
+            0,                                 0,                                1, 0,
+            0,                                 0,                                0, 1
+        )
+        local completeCamTransform = camWorldTransform:inverse()
         completeCamTransform = camProjTransform:apply(completeCamTransform)
         renderEnvObj:setCameraProj(completeCamTransform)
     end
