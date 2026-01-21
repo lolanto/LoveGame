@@ -33,22 +33,39 @@ function TimeRewindSys:getIsRewinding()
 end
 
 function TimeRewindSys:tick(deltaTime)
-    -- Handle Input
-    local requestRewind = love.keyboard.isDown('backspace')
-    
-    if requestRewind and not self._isRewinding then
-        -- Start rewinding
-        self._isRewinding = true
-    elseif not requestRewind and self._isRewinding then
-        -- Stop rewinding - Truncate history to current time (overwrite future)
-        self._isRewinding = false
-        self:truncateHistory()
-    end
-
     if self._isRewinding then
         self:rewind(deltaTime)
     else
         self:record(deltaTime)
+    end
+end
+
+--- 处理用户输入，决定是否启动回放功能
+--- @param userInteractController UserInteractController 用户交互控制器
+function TimeRewindSys:processUserInput(userInteractController)
+    local _keyPressedCheckFunc = function(keyObj)
+        if keyObj == nil then return false end
+        local isPressed, pressingDuration = keyObj:getIsPressed()
+        return isPressed
+    end
+    -- 判断是否MoveForward命令被触发
+    local timeRewindCommandConsumeInfo = {key_backspace = require('UserInteractDesc').InteractConsumeInfo:new(_keyPressedCheckFunc)}
+    if userInteractController:tryToConsumeInteractInfo(timeRewindCommandConsumeInfo) then
+        self:enableRewind(true)
+    else
+        self:enableRewind(false)
+    end
+end
+
+--- 启动是否要开启回放功能
+--- @parma enable boolean 启动或者关闭回放功能
+--- @return nil
+function TimeRewindSys:enableRewind(enable)
+    if enable and not self._isRewinding then
+        self._isRewinding = true
+    elseif not enable and self._isRewinding then
+        self._isRewinding = false
+        self:truncateHistory()
     end
 end
 
@@ -68,6 +85,10 @@ function TimeRewindSys:record(deltaTime)
                 if state then
                     entitySnapshot[typeID] = state
                     hasData = true
+                end
+                --- 假如当前正在Debug模式，应该强制检查组件是否实现了restoreRewindState方法
+                if require('Config').Config.IS_DEBUG then
+                    assert(component.restoreRewindState ~= nil, string.format("Component %s of Entity %s does not implement restoreRewindState method required for Time Rewind!", typeID, entity._name))
                 end
             end
         end
@@ -166,41 +187,15 @@ function TimeRewindSys:rewind(deltaTime)
              end
         end
     end
-    
-    
-    -- Also check for Physic bodies to sync velocity if needed at the exact moment
-    -- But since we are interpolating Transform, Physics body sync (position) happens in syncPhysicsBodies later.
-    -- Velocity restoration:
-    -- We should probably restore velocity from snapshotA to respect continuity?
-    -- Interpolating velocity is also possible if supported.
-    for entity, entitySnapshotA in pairs(snapshotA.data) do
-         local physic = entity:getComponent('PhysicCMP')
-         if physic and physic.restoreRewindState then
-             -- Just restore discrete velocity from A to avoid weird physics interpolation issues?
-             -- Or lerp? PhysicCMP doesn't implement lerp yet, falls back to restore.
-             if physic.lerpRewindState then
-                  local entitySnapshotB = snapshotB.data[entity]
-                  if entitySnapshotB and entitySnapshotB[physic:getTypeID()] then
-                      physic:lerpRewindState(entitySnapshotA[physic:getTypeID()], entitySnapshotB[physic:getTypeID()], t)
-                  else
-                      physic:restoreRewindState(entitySnapshotA[physic:getTypeID()])
-                  end
-             else
-                  physic:restoreRewindState(entitySnapshotA[physic:getTypeID()])
-             end
-         end
-    end
-    
 end
 
---- Force sync physics bodies to current transform (World)
---- Call this after TransformUpdateSys has updated world matrices during rewind
-function TimeRewindSys:syncPhysicsBodies()
+function TimeRewindSys:postProcess()
+    -- 物理组件的Transform属性需要在它的Transform组件都更新后，再同步回去
+    -- 因为Transform组件更新过程中，子Entity的Transform会影响父Entity的Transform
     for _, entity in ipairs(self._rewindEntities) do
-        local physic = entity:getComponent('PhysicCMP')
-        local transform = entity:getComponent_const('TransformCMP')
-        if physic and transform and physic.syncBodyFromTransform then
-            physic:syncBodyFromTransform(transform)
+        local physicCMP = entity:getComponent('PhysicCMP')
+        if physicCMP then
+            physicCMP:syncBodyTransformFromEntityTransform()
         end
     end
 end

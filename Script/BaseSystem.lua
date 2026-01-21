@@ -104,6 +104,9 @@ function BaseSystem:draw()
     -- do nothing
 end
 
+function BaseSystem:processUserInput(userInteractController)
+    -- do nothing
+end
 
 return {
     BaseSystem = BaseSystem,

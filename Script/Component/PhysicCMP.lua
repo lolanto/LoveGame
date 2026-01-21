@@ -286,8 +286,12 @@ function PhysicCMP:lerpRewindState(stateA, stateB, t)
     self._body:setAngularVelocity(angVel)
 end
 
-function PhysicCMP:syncBodyFromTransform(transformCmp)
+--- 从Entity的Transform组件同步物理Body的位置和旋转
+--- @note This method should be called when the Entity's Transform has changed and we need to update the physics body accordingly.
+--- @return nil
+function PhysicCMP:syncBodyTransformFromEntityTransform()
     if not self._body or self._body:isDestroyed() then return end
+    local transformCmp = self._entity:getComponent_const('TransformCMP')
     if not transformCmp then return end
     
     local x, y = transformCmp:getWorldPosition_const()

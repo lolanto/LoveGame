@@ -249,6 +249,8 @@ function love.update(deltaTime)
         end
     end
 
+    systems['TimeRewindSys']:processUserInput(userInteractController)
+
     systems['TransformUpdateSys']:preCollect()
     systems['MainCharacterInteractSys']:preCollect()
     systems['PatrolSys']:preCollect()
@@ -282,9 +284,8 @@ function love.update(deltaTime)
         
         -- 确保Transform Hierarchy正确计算
         systems['TransformUpdateSys']:tick(deltaTime)
-        
-        -- 强制同步PhysicsBody到回溯的位置，确保Debug绘制和状态正确
-        systems['TimeRewindSys']:syncPhysicsBodies()
+
+        systems['TimeRewindSys']:postProcess()
         
     else
         systems['MainCharacterInteractSys']:tick(deltaTime)
