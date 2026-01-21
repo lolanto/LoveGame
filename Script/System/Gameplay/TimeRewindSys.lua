@@ -15,6 +15,7 @@ function TimeRewindSys:new()
     instance._rewindEntities = {}
     instance._maxHistoryDuration = 10.0 -- seconds
     instance._currentRecordTime = 0
+    instance._rewindSpeedMultiplier = 4.0
     return instance
 end
 
@@ -67,6 +68,10 @@ function TimeRewindSys:enableRewind(enable)
         self._isRewinding = false
         self:truncateHistory()
     end
+end
+
+function TimeRewindSys:setRewindSpeedMultiplier(multiplier)
+    self._rewindSpeedMultiplier = multiplier
 end
 
 function TimeRewindSys:record(deltaTime)
@@ -126,7 +131,9 @@ function TimeRewindSys:rewind(deltaTime)
         return
     end
     
-    self._currentRecordTime = math.max(self._history[1].time, self._currentRecordTime - deltaTime)
+    local rewindDeltaTime = deltaTime * self._rewindSpeedMultiplier
+
+    self._currentRecordTime = math.max(self._history[1].time, self._currentRecordTime - rewindDeltaTime)
     
     -- Find the two snapshots surrounding the current time
     -- history[i].time <= currentFuncTime < history[i+1].time
