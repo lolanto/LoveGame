@@ -8,6 +8,7 @@
 --- @field _boundingQuad nil
 --- @field _isVisible boolean
 --- @field _isEnable boolean
+--- @field _needRewind boolean
 local Entity = {}
 Entity.__index = Entity
 
@@ -23,6 +24,7 @@ function Entity:new(nameOfEntity)
     instance._boundingQuad = nil -- Entity的包围盒
     instance._isVisible = false -- 当前Entity是否可见
     instance._isEnable = false -- 当前Entity是否被激活
+    instance._needRewind = false -- 是否需要回溯
     return instance
 end
 
@@ -198,6 +200,26 @@ end
 
 function Entity:setIDToParentEntity(inputID)
     self.idToParentEntity = inputID
+end
+
+--- 设置是否进行回溯
+--- @param val boolean
+function Entity:setNeedRewind(val)
+    self._needRewind = val
+end
+
+--- 检查是否需要回溯
+--- @return boolean
+function Entity:getNeedRewind_const()
+    --- 回溯父节点，假如父节点需要回溯，则子节点也需要回溯
+    local current = self
+    while current do
+        if current._needRewind then
+            return true
+        end
+        current = current:getParent_const()
+    end
+    return false
 end
 
 --- update实体

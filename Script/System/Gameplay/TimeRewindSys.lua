@@ -23,8 +23,7 @@ function TimeRewindSys:preCollect()
 end
 
 function TimeRewindSys:collect(entity)
-    -- Collect all entities that have a Transform.
-    if entity:getComponent_const('TransformCMP') then
+    if entity:getNeedRewind_const() then
         table.insert(self._rewindEntities, entity)
     end
 end
