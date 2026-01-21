@@ -160,6 +160,10 @@ function PhysicCMP:new(world, opts)
         -- create love body
         instance._body = love.physics.newBody(world, 0, 0, bodyType)
         
+        if opts.fixedRotation ~= nil then
+            instance._body:setFixedRotation(opts.fixedRotation)
+        end
+
         -- create fixture; use density from shape descriptor or opts
         local density = instance._shape:getDensity_const()
         instance._fixture = love.physics.newFixture(instance._body, instance._shape:getLoveShape(), density)
@@ -227,6 +231,23 @@ function PhysicCMP:getBodyRotate()
         return self._body:getAngle()
     end
     return nil
+end
+
+---设置是否固定旋转（不受外力影响发生旋转）
+---@param fixed boolean 是否固定
+function PhysicCMP:setFixedRotation(fixed)
+    if self._body then
+        self._body:setFixedRotation(fixed)
+    end
+end
+
+---获取是否固定旋转
+---@return boolean
+function PhysicCMP:isFixedRotation_const()
+    if self._body then
+        return self._body:isFixedRotation()
+    end
+    return false
 end
 
 --- [TimeRewind] 获取组件的回溯状态

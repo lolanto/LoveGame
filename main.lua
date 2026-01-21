@@ -42,22 +42,28 @@ function love.load()
     print(image)
     love.graphics.setBackgroundColor(255,255,255)
 
-    local entity = MOD_Entity:new('player')
-    entity:boundComponent(require('Component.DrawableComponents.AnimationCMP').AnimationCMP:new(image, 0, 0, 736, 32, 32, 32))
-    entity:boundComponent(require('Component.TransformCMP').TransformCMP:new())
-    entity:boundComponent(require('Component.MainCharacterControllerCMP').MainCharacterControllerCMP:new())
-    entity:boundComponent(require('Component.MovementCMP').MovementCMP:new())
-    entity:boundComponent(require('Component.CameraCMP').CameraCMP:new())
-    entity:boundComponent(require('Component.PhysicCMP').PhysicCMP:new(systems['PhysicSys']:getWorld()
-        , {shape = require('Component.PhysicCMP').Shape.static.Rectangle(1, 1, 0, 0, 0, 1)}))
-    table.insert(entities, entity)
+    local player = MOD_Entity:new('player')
+    player:boundComponent(require('Component.DrawableComponents.AnimationCMP').AnimationCMP:new(image, 0, 0, 736, 32, 32, 32))
+    player:boundComponent(require('Component.TransformCMP').TransformCMP:new())
+    player:boundComponent(require('Component.MainCharacterControllerCMP').MainCharacterControllerCMP:new())
+    player:boundComponent(require('Component.MovementCMP').MovementCMP:new())
+    player:boundComponent(require('Component.CameraCMP').CameraCMP:new())
+    player:boundComponent(require('Component.PhysicCMP').PhysicCMP:new(
+        systems['PhysicSys']:getWorld(),
+        {
+            shape = require('Component.PhysicCMP').Shape.static.Rectangle(1, 1, 0, 0, 0, 1),
+            fixedRotation = true
+        }
+    ))
+    table.insert(entities, player)
+    player:setNeedRewind(true)
 
     local entityCam = MOD_Entity:new('camera')
     entityCam:boundComponent(require('Component.CameraCMP').CameraCMP:new())
     entityCam:boundComponent(require('Component.TransformCMP').TransformCMP:new())
     entityCam:boundComponent(require('Component.DrawableComponents.DebugTileTexture').DebugTileTextureCMP:new())
     table.insert(entities, entityCam)
-    entity:boundChildEntity(entityCam)
+    player:boundChildEntity(entityCam)
 
     -- local entity2 = MOD_Entity:new('debug')
     -- entity2:boundComponent(require('Component.DrawableComponents.DebugColorBlockCMP').DebugColorBlockCMP:new({255,0,0,255}, 1, 1))
@@ -73,6 +79,7 @@ function love.load()
     entity3:boundComponent(require('Component.TransformCMP').TransformCMP:new())
     entity3:getComponent('TransformCMP'):setWorldPosition(0, -10)
     table.insert(entities, entity3)
+    entity3:setNeedRewind(true)
 
     local entity3_deb = MOD_Entity:new('debug')
     entity3_deb:boundComponent(require('Component.DrawableComponents.DebugColorBlockCMP').DebugColorBlockCMP:new({255,0,0,255}, 1, 1))
@@ -107,6 +114,7 @@ function love.load()
             }
         ))
         table.insert(entities, ballEntity)
+        ballEntity:setNeedRewind(true)
     end
 
     -- 添加场景边界内容
