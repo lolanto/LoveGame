@@ -38,7 +38,7 @@ function love.load()
     systems['PhysicVisualizeSys'] = require('System.PhysicSys').PhysicVisualizeSys:new()
     systems['TimeRewindSys'] = require('System.Gameplay.TimeRewindSys').TimeRewindSys:new()
 
-    local image = love.graphics.newImage("Resources/characters.png")
+    local image = love.graphics.newImage("Resources/debug_characters.png")
     print(image)
     love.graphics.setBackgroundColor(255,255,255)
 
