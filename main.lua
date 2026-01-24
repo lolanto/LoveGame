@@ -36,6 +36,8 @@ function love.load()
     systems['DisplaySys'] = require('System.DisplaySys').DisplaySys:new()
     systems['PhysicSys'] = require('System.PhysicSys').PhysicSys:new()
     systems['PhysicVisualizeSys'] = require('System.PhysicSys').PhysicVisualizeSys:new()
+    systems['TriggerSys'] = require('System.Gameplay.TriggerSys').TriggerSys:new()
+    systems['TriggerSys']:setPhysicSys(systems['PhysicSys'])
     systems['TimeRewindSys'] = require('System.Gameplay.TimeRewindSys').TimeRewindSys:new()
 
     local image = love.graphics.newImage("Resources/debug_characters.png")
@@ -55,6 +57,14 @@ function love.load()
             fixedRotation = true
         }
     ))
+    player:boundComponent(require('Component.Gameplay.TriggerCMP').TriggerCMP:new())
+    player:getComponent('TriggerCMP'):setCallback(function(selfEntity, otherEntity)
+        local otherName = otherEntity:getName_const()
+        if otherName == 'wallLeft' then
+            print("日志：Player 触碰到了 wallLeft！")
+        end
+    end)
+
     table.insert(entities, player)
     player:setNeedRewind(true)
 
@@ -150,6 +160,8 @@ function love.load()
             fixture = { friction = 0.8, restitution = 0.0 }
         }
     ))
+    wallLeft:boundComponent(require('Component.Gameplay.TriggerCMP').TriggerCMP:new())
+    
     wallLeft:boundComponent(require('Component.TransformCMP').TransformCMP:new())
     wallLeft:getComponent('TransformCMP'):setWorldPosition(-7.5, 0)
     table.insert(entities, wallLeft)
@@ -260,6 +272,7 @@ function love.update(deltaTime)
     systems['PhysicSys']:preCollect()
     systems['PhysicVisualizeSys']:preCollect()
     systems['TimeRewindSys']:preCollect()
+    systems['TriggerSys']:preCollect()
     
     for i = 1, #thisFrameEntities do
         local entity = thisFrameEntities[i]
@@ -273,6 +286,7 @@ function love.update(deltaTime)
             systems['PhysicSys']:collect(entity)
             systems['PhysicVisualizeSys']:collect(entity)
             systems['TimeRewindSys']:collect(entity)
+            systems['TriggerSys']:collect(entity)
         end
     end
 
@@ -295,6 +309,7 @@ function love.update(deltaTime)
 
         systems['PhysicSys']:tick(deltaTime)
         systems['TransformUpdateSys']:tick(deltaTime)
+        systems['TriggerSys']:tick(deltaTime)
     end
     
     ---@cast systems['CameraSetupSys'] CameraSetupSys

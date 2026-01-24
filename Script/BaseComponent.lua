@@ -30,6 +30,12 @@ function BaseComponent:getEntity_const()
     return require("utils.ReadOnly").makeReadOnly(self._entity)
 end
 
+--- 当组件绑定到Entity时调用
+--- @param entity Entity 绑定的实体
+function BaseComponent:onBound(entity)
+    -- default do nothing
+end
+
 --- [TimeRewind] 获取组件的回溯状态
 --- 返回包含组件关键数据的表，若不支持回溯则返回nil
 --- @return table|nil

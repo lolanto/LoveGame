@@ -12,18 +12,43 @@ function PhysicSys:new()
     instance:addComponentRequirement(require('Component.PhysicCMP').PhysicCMP.ComponentTypeID, ComponentRequirementDesc:new(true, false))
     instance:addComponentRequirement(require('Component.TransformCMP').TransformCMP.ComponentTypeID, ComponentRequirementDesc:new(true, false))
     instance._world = love.physics.newWorld(0, 9.8, false)  -- 创建一个物理世界，重力向下，单位为米/秒²
+    
+    instance._collisionEvents = {}
+
     instance._world:setCallbacks(
         function(a, b, coll)
             -- 碰撞开始回调
+            local userDataA = a:getUserData()
+            local userDataB = b:getUserData()
+            -- 假如fixture没有UserData，尝试获取Body的UserData
+            if not userDataA then userDataA = a:getBody():getUserData() end
+            if not userDataB then userDataB = b:getBody():getUserData() end
+
+            if userDataA and userDataB then
+                table.insert(instance._collisionEvents, {a = userDataA, b = userDataB, type = 'begin', contact = coll})
+            end
         end,
         function(a, b, coll)
             -- 碰撞结束回调
+            local userDataA = a:getUserData()
+            local userDataB = b:getUserData()
+             if not userDataA then userDataA = a:getBody():getUserData() end
+            if not userDataB then userDataB = b:getBody():getUserData() end
+
+            if userDataA and userDataB then
+                table.insert(instance._collisionEvents, {a = userDataA, b = userDataB, type = 'end', contact = coll})
+            end
         end,
         nil,
         nil
     )
     return instance
 
+end
+
+--- 获取当前帧的碰撞事件列表
+function PhysicSys:getCollisionEvents()
+    return self._collisionEvents
 end
 
 function PhysicSys:getWorld()
@@ -33,6 +58,7 @@ end
 function PhysicSys:tick(deltaTime)
     MOD_BaseSystem.tick(self, deltaTime)
 
+    self._collisionEvents = {}
     
     -- 先对所有的物理组件进行必要的更新
     for i = 1, #self._collectedComponents['PhysicCMP'] do
@@ -62,8 +88,6 @@ function PhysicSys:tick(deltaTime)
         if physicCmp._body and transformCmp then
             -- assert(physicCmp:getBody():isAwake())
             local x, y = physicCmp:getBodyPosition()
-            local name_of_entity = physicCmp:getEntity_const():getName_const()
-            print("PhysicSys tick: Body Position of Entity '" .. name_of_entity .. "' is (" .. tostring(x) .. ", " .. tostring(y) .. ")")
             local rotation = physicCmp:getBodyRotate()
             transformCmp:setWorldPosition(x, y)
             transformCmp:setWorldRotate(rotation)

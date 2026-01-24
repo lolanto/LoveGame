@@ -137,7 +137,6 @@ function PhysicCMP:new(world, opts)
     -- {
     --   bodyType = "dynamic", -- "dynamic"|"static"|"kinematic"
     --   shape = Shape.Circle(radius) or Shape.Rectangle(w,h)
-    --   userdata ?
     -- }
     local instance = setmetatable(MOD_BaseComponent.new(self, PhysicCMP.ComponentTypeName), self)
 
@@ -167,15 +166,28 @@ function PhysicCMP:new(world, opts)
         -- create fixture; use density from shape descriptor or opts
         local density = instance._shape:getDensity_const()
         instance._fixture = love.physics.newFixture(instance._body, instance._shape:getLoveShape(), density)
-        
-        -- optional fixture userdata
-        if opts.userData ~= nil then
-            instance._fixture:setUserData(opts.userData)
-        end
+
     end
 
     return instance
 end
+
+function PhysicCMP:getEntity()
+    return self._entity
+end
+
+--- 当组件绑定到Entity时调用
+function PhysicCMP:onBound(entity)
+    assert(entity == self._entity, "PhysicCMP:onBound called with different entity than current one")
+    if self._fixture then
+        self._fixture:setUserData(entity)
+    end
+    if self._body then
+        -- 同时给Body也设置UserData，以防PhysicSys中只获取到了Body
+        self._body:setUserData(entity)
+    end
+end
+
 
 ---判断物理组件的Body是否为静态类型
 ---@return boolean 是否为静态类型

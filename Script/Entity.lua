@@ -43,6 +43,7 @@ function Entity:boundComponent(inputComponent)
     assert(self._components[typeID] == nil, 'There is an already component bound to this entity!')
     self._components[typeID] = inputComponent
     inputComponent._entity = self
+    inputComponent:onBound(self)
 end
 
 --- 绑定或者替换一个已有的组件
@@ -58,9 +59,11 @@ function Entity:boundOrReplaceComponent(inputComponent)
         local oldComponent = self._components[typeID]
         self._components[typeID] = inputComponent
         oldComponent._entity = nil
+        inputComponent:onBound(self)
         return oldComponent
     else
         self._components[typeID] = inputComponent
+        inputComponent:onBound(self)
         return nil
     end
     return nil
