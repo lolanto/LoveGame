@@ -26,6 +26,11 @@ function love.load()
     require('RenderEnv').RenderEnv.setGlobalInstance(renderEnv)
     userInteractController = require('UserInteractController').UserInteractController:new()
 
+    local MUtils = require('MUtils')
+    MUtils.InitLogger()
+    -- Register some default modules if needed
+    MUtils.RegisterModule("Main", "INFO", "DEBUG")
+    
     local MOD_Entity = require('Entity')
 
     systems['TransformUpdateSys'] = require('System.TransformUpdateSys').TransformUpdateSys:new()
