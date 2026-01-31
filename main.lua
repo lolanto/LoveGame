@@ -63,12 +63,6 @@ function love.load()
         }
     ))
     player:boundComponent(require('Component.Gameplay.TriggerCMP').TriggerCMP:new())
-    player:getComponent('TriggerCMP'):setCallback(function(selfEntity, otherEntity)
-        local otherName = otherEntity:getName_const()
-        if otherName == 'wallLeft' then
-            print("日志：Player 触碰到了 wallLeft！")
-        end
-    end)
 
     table.insert(entities, player)
     player:setNeedRewind(true)
@@ -89,7 +83,7 @@ function love.load()
     -- entity:boundChildEntity(entity2)
 
     local LevelManager = require('LevelManager')
-    LevelManager.loadLevel('Levels.Level1', entities, systems)
+    LevelManager.static.getInstance():requireLoadLevel('Levels.Level1')
 
     mainCharacterEntity = entity
     mainCameraEntity = entity
@@ -105,6 +99,8 @@ end
 
 function love.update(deltaTime)
     preUpdate(deltaTime)
+    local LevelManager = require('LevelManager')
+    LevelManager.static.getInstance():tick(entities, systems)
     
     local thisFrameEntities = {}
     local visitedEntities = {}

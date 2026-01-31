@@ -1,6 +1,21 @@
-local Level = {}
+--- Level1关卡定义
+local BaseLevel = require('Levels.BaseLevel')
+local Level = setmetatable({}, {__index = BaseLevel})
+Level.__index = Level
+Level.static = {}
+Level.static.name = "Level1"
+Level.static.getName = function() return Level.static.name end
 
-function Level.load(entities, systems)
+--- 属于这个关卡的Gameplay函数声明
+local func_leftWallTrigger = nil
+
+function Level:new()
+    local instance = BaseLevel:new(Level.static.name)
+    setmetatable(instance, self)
+    return instance
+end
+
+function Level:load(systems)
     local MOD_Entity = require('Entity')
     
     local entity3 = MOD_Entity:new('phyDebug')
@@ -8,7 +23,7 @@ function Level.load(entities, systems)
         , {shape = require('Component.PhysicCMP').Shape.static.Rectangle(1, 1, 0, 0, 0, 1)}))
     entity3:boundComponent(require('Component.TransformCMP').TransformCMP:new())
     entity3:getComponent('TransformCMP'):setWorldPosition(0, -10)
-    table.insert(entities, entity3)
+    self:addEntity(entity3)
     entity3:setNeedRewind(true)
 
     local entity3_deb = MOD_Entity:new('debug')
@@ -16,7 +31,7 @@ function Level.load(entities, systems)
     entity3_deb:getComponent('DebugColorBlockCMP'):setLayer(-1) -- 设置这个组件的绘制层级为-1
     entity3_deb:boundComponent(require('Component.TransformCMP').TransformCMP:new())
     entity3_deb:boundComponent(require('Component.MovementCMP').MovementCMP:new())
-    table.insert(entities, entity3_deb)
+    self:addEntity(entity3_deb)
     entity3:boundChildEntity(entity3_deb)
 
     -- 添加3个下落并堆叠在一起的球体
@@ -43,7 +58,7 @@ function Level.load(entities, systems)
                 fixture = { friction = 0.5, restitution = 0.3 }
             }
         ))
-        table.insert(entities, ballEntity)
+        self:addEntity(ballEntity)
         ballEntity:setNeedRewind(true)
     end
 
@@ -60,14 +75,14 @@ function Level.load(entities, systems)
     ))
     ground:boundComponent(require('Component.TransformCMP').TransformCMP:new())
     ground:getComponent('TransformCMP'):setWorldPosition(0, 5)
-    table.insert(entities, ground)
+    self:addEntity(ground)
 
     local ground_deb = MOD_Entity:new('debug')
     ground_deb:boundComponent(require('Component.DrawableComponents.DebugColorBlockCMP').DebugColorBlockCMP:new({0, 0, 255, 255}, 15, 1))
     ground_deb:getComponent('DebugColorBlockCMP'):setLayer(-1) -- 设置这个组件的绘制层级为-1
     ground_deb:boundComponent(require('Component.TransformCMP').TransformCMP:new())
     ground_deb:boundComponent(require('Component.MovementCMP').MovementCMP:new())
-    table.insert(entities, ground_deb)
+    self:addEntity(ground_deb)
     ground:boundChildEntity(ground_deb)
 
     -- 添加两侧墙面
@@ -81,17 +96,17 @@ function Level.load(entities, systems)
         }
     ))
     wallLeft:boundComponent(require('Component.Gameplay.TriggerCMP').TriggerCMP:new())
-    
+    wallLeft:getComponent('TriggerCMP'):setCallback(func_leftWallTrigger)
     wallLeft:boundComponent(require('Component.TransformCMP').TransformCMP:new())
     wallLeft:getComponent('TransformCMP'):setWorldPosition(-7.5, 0)
-    table.insert(entities, wallLeft)
+    self:addEntity(wallLeft)
 
     local wallLeft_deb = MOD_Entity:new('debug')
     wallLeft_deb:boundComponent(require('Component.DrawableComponents.DebugColorBlockCMP').DebugColorBlockCMP:new({0, 255, 0, 255}, 1, 10))
     wallLeft_deb:getComponent('DebugColorBlockCMP'):setLayer(-1) --
     wallLeft_deb:boundComponent(require('Component.TransformCMP').TransformCMP:new())
     wallLeft_deb:boundComponent(require('Component.MovementCMP').MovementCMP:new())
-    table.insert(entities, wallLeft_deb)
+    self:addEntity(wallLeft_deb)
     wallLeft:boundChildEntity(wallLeft_deb)
 
     local wallRight = MOD_Entity:new('wallRight')
@@ -105,15 +120,23 @@ function Level.load(entities, systems)
     ))
     wallRight:boundComponent(require('Component.TransformCMP').TransformCMP:new())
     wallRight:getComponent('TransformCMP'):setWorldPosition(7.5, 0)
-    table.insert(entities, wallRight)
+    self:addEntity(wallRight)
 
     local wallRight_deb = MOD_Entity:new('debug')
     wallRight_deb:boundComponent(require('Component.DrawableComponents.DebugColorBlockCMP').DebugColorBlockCMP:new({0, 255, 0, 255}, 1, 10))
     wallRight_deb:getComponent('DebugColorBlockCMP'):setLayer(-1) --
     wallRight_deb:boundComponent(require('Component.TransformCMP').TransformCMP:new())
     wallRight_deb:boundComponent(require('Component.MovementCMP').MovementCMP:new())
-    table.insert(entities, wallRight_deb)
+    self:addEntity(wallRight_deb)
     wallRight:boundChildEntity(wallRight_deb)
+
+    return self:getEntities()
+end
+
+function func_leftWallTrigger(selfEntity, otherEntity)
+    if otherEntity:getName_const() == 'player' then
+        require('LevelManager').static.getInstance():requireLoadLevel('Levels.Level2')
+    end
 end
 
 return Level
