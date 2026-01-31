@@ -9,6 +9,7 @@
 --- @field _isVisible boolean
 --- @field _isEnable boolean
 --- @field _needRewind boolean
+--- @field _level Level|nil ReadOnly
 local Entity = {}
 Entity.__index = Entity
 
@@ -25,6 +26,7 @@ function Entity:new(nameOfEntity)
     instance._isVisible = false -- 当前Entity是否可见
     instance._isEnable = false -- 当前Entity是否被激活
     instance._needRewind = false -- 是否需要回溯
+    instance._level = nil -- Entity所属的Level ReadOnly
     return instance
 end
 
@@ -228,6 +230,25 @@ end
 --- update实体
 --- @param deltaTime number 两次tick之间的间隔时间(second)
 function Entity:update(deltaTime)
+end
+
+--- 进入关卡时的回调
+--- @param level Level 进入的关卡 ReadOnly
+function Entity:onEnterLevel(level)
+    self._level = level
+end
+
+--- 离开关卡时的回调
+function Entity:onLeaveLevel()
+    self._level = nil
+    --- 销毁所有组件
+    for _, comp in pairs(self._components) do
+        if comp ~= nil then
+            comp:onUnbound()
+            comp:onDestroy()
+        end
+    end
+    self._components = {}
 end
 
 return Entity

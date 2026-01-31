@@ -36,6 +36,10 @@ function BaseComponent:onBound(entity)
     -- default do nothing
 end
 
+function BaseComponent:onUnbound()
+    -- default do nothing
+end
+
 --- [TimeRewind] 获取组件的回溯状态
 --- 返回包含组件关键数据的表，若不支持回溯则返回nil
 --- @return table|nil
@@ -162,6 +166,11 @@ function BaseComponent.classIsSubclassOf(classTable, typeInfo)
         mt = getmetatable(mt)
     end
     return false
+end
+
+--- 组件被销毁之前的回调
+function BaseComponent.onDestroy()
+    -- do nothing
 end
 
 return {

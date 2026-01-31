@@ -188,6 +188,19 @@ function PhysicCMP:onBound(entity)
     end
 end
 
+function PhysicCMP:onUnbound()
+    --- 从物理世界中移除body和fixture
+    if self._fixture then
+        self._fixture:setUserData(nil)
+        self._fixture:destroy()
+        self._fixture = nil
+    end
+    if self._body then
+        self._body:setUserData(nil)
+        self._body:destroy()
+        self._body = nil
+    end
+end
 
 ---判断物理组件的Body是否为静态类型
 ---@return boolean 是否为静态类型
