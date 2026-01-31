@@ -135,7 +135,7 @@ end
 
 function func_leftWallTrigger(selfEntity, otherEntity)
     if otherEntity:getName_const() == 'player' then
-        require('LevelManager').static.getInstance():requireLoadLevel('Levels.Level2')
+        require('LevelManager').static.getInstance():requestLoadLevel('Levels.Level2')
     end
 end
 

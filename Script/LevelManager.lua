@@ -35,7 +35,7 @@ function LevelManager:getCurrentLevel()
     return self._currentLevel
 end
 
-function LevelManager:requireLoadLevel(levelPath)
+function LevelManager:requestLoadLevel(levelPath)
     local status, levelModule = pcall(require, levelPath)
     if not status then
         MUtils.Error(LOG_MODULE, "Error loading level module: " .. levelPath)
