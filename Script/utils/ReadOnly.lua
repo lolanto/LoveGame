@@ -7,6 +7,12 @@
 ---@param allowedPattern? string 指定允许的访问模式，格式是正则表达式
 ---@return any 只读包装器
 local function makeReadOnly(obj, allowedPattern)
+
+    --- 在非调试模式下，直接返回原对象以提升性能
+    if require('Config').Config.IS_DEBUG == false then
+        return obj
+    end
+
     if obj == nil then
         return nil
     end
