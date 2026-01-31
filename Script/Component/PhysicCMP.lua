@@ -189,15 +189,19 @@ function PhysicCMP:onBound(entity)
 end
 
 function PhysicCMP:onUnbound()
-    --- 从物理世界中移除body和fixture
     if self._fixture then
         self._fixture:setUserData(nil)
-        self._fixture:destroy()
-        self._fixture = nil
+        self._fixture = nil 
+        -- 注意：无需调用 self._fixture:destroy()，因为它会随 Body 自动销毁
     end
+
     if self._body then
         self._body:setUserData(nil)
-        self._body:destroy()
+        -- 核心防御：只有当它还活着的时候才去销毁它
+        if not self._body:isDestroyed() then
+            self._body:destroy()
+        end
+        
         self._body = nil
     end
 end
