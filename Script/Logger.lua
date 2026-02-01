@@ -164,11 +164,6 @@ function Logger.Warning(moduleName, message)
     Logger.Write(moduleName, Logger.Level.WARNING, message)
 end
 
--- Typo support functionality requested by user ("Warnning")
-function Logger.Warnning(moduleName, message)
-    Logger.Write(moduleName, Logger.Level.WARNING, message)
-end
-
 function Logger.Error(moduleName, message)
     Logger.Write(moduleName, Logger.Level.ERROR, message)
 end
