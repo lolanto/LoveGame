@@ -36,7 +36,7 @@ function Level:load(systems)
     self:addEntity(ground_deb)
     ground:boundChildEntity(ground_deb)
 
-    local LevelManager = require('LevelManager')
+    local LevelManager = require('LevelManager').LevelManager
     LevelManager.static.getInstance():requestUnloadLevelsExceptCurrent()
 
     return self:getEntities()

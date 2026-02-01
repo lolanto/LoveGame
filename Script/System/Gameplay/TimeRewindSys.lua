@@ -1,21 +1,35 @@
-local BaseSystem = require('BaseSystem').BaseSystem
+local MOD_BaseSystem = require('BaseSystem').BaseSystem
+local MUtils = require('MUtils')
+local ISubscriber = require('EventInterfaces').ISubscriber
+local MultiInheritHelper = require('MultiInheritHelper').MultiInheritHelper
 
----@class TimeRewindSys : BaseSystem
+---@class TimeRewindSys : MOD_BaseSystem, ISubscriber
 ---@field _isRewinding boolean
 ---@field _history table[] -- stack of snapshots
 ---@field _rewindEntities Entity[]
-local TimeRewindSys = setmetatable({}, {__index = BaseSystem})
-TimeRewindSys.__index = TimeRewindSys
+local TimeRewindSys = MultiInheritHelper.createClass(MOD_BaseSystem, ISubscriber)
 TimeRewindSys.SystemTypeName = "TimeRewindSys"
 
-function TimeRewindSys:new()
-    local instance = setmetatable(BaseSystem.new(self, TimeRewindSys.SystemTypeName), self)
+function TimeRewindSys:new(o)
+    o = o or {}
+    -- 初始化两个父类的数据
+    o = MOD_BaseSystem:new(TimeRewindSys.SystemTypeName, o)
+    o = ISubscriber:new(TimeRewindSys.SystemTypeName, o)
+    
+    -- 将对象的元表设置为当前类 TimeRewindSys
+    local instance = setmetatable(o, TimeRewindSys)
+    
     instance._isRewinding = false
     instance._history = {}
     instance._rewindEntities = {}
     instance._maxHistoryDuration = 10.0 -- seconds
     instance._currentRecordTime = 0
     instance._rewindSpeedMultiplier = 4.0
+
+    local messageCenter = require('MessageCenter').MessageCenter.static.getInstance()
+    local event_LeaveLevel = require('LevelManager').Event_LevelUnloaded
+    messageCenter:subscribe(event_LeaveLevel, instance, TimeRewindSys.onLeaveLevel, instance, 'TimeRewindSys_onLeaveLevel')
+
     return instance
 end
 
@@ -205,6 +219,13 @@ function TimeRewindSys:postProcess()
             physicCMP:syncBodyTransformFromEntityTransform()
         end
     end
+end
+
+function TimeRewindSys.onLeaveLevel(subscriberContext, broadcasterContext)
+    ---@type TimeRewindSys
+    local self = subscriberContext
+    self._history = {}
+    self._currentRecordTime = 0
 end
 
 return { TimeRewindSys = TimeRewindSys }

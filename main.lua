@@ -82,7 +82,7 @@ function love.load()
     -- table.insert(entities, entity2)
     -- entity:boundChildEntity(entity2)
 
-    local LevelManager = require('LevelManager')
+    local LevelManager = require('LevelManager').LevelManager
     LevelManager.static.getInstance():requestLoadLevel('Levels.Level1')
 
     mainCharacterEntity = entity
@@ -98,8 +98,11 @@ function postUpdate()
 end
 
 function love.update(deltaTime)
+    -- 处理消息中心积压的事件
+    require('MessageCenter').MessageCenter.static.getInstance():dispatch()
+
     preUpdate(deltaTime)
-    local LevelManager = require('LevelManager')
+    local LevelManager = require('LevelManager').LevelManager
     LevelManager.static.getInstance():tick(entities, systems)
     
     local thisFrameEntities = {}

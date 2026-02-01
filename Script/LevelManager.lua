@@ -2,12 +2,18 @@ local MUtils = require('MUtils')
 
 local LOG_MODULE = "LevelManager"
 
---- @class LevelManager
+local MessageCenter = require('MessageCenter').MessageCenter
+local IBroadcaster = require('EventInterfaces').IBroadcaster
+
+local Event_LevelLoaded = MessageCenter.static.getInstance():registerEvent("Event_LevelLoaded")
+local Event_LevelUnloaded = MessageCenter.static.getInstance():registerEvent("Event_LevelUnloaded")
+
+--- @class LevelManager : IBroadcaster
 --- @field _currentLevel Level|nil 当前加载的关卡
 --- @field _previousLevel Level|nil 上一个关卡
 --- @field _nextLevelModule Level|nil 下一个关卡模块（预加载用）
 --- @field _unloadLevelsList table 需要卸载的关卡列表
-local LevelManager = {}
+local LevelManager = setmetatable({}, IBroadcaster)
 LevelManager.__index = LevelManager
 LevelManager.static = {}
 LevelManager.static.instance = nil
@@ -23,7 +29,11 @@ function LevelManager:new()
     --- 只能有一个单例
     assert(LevelManager.static.instance == nil, "LevelManager 只能有一个实例！")
     MUtils.RegisterModule(LOG_MODULE)
-    local instance = setmetatable({}, self)
+    
+    -- 继承自 IBroadcaster
+    local instance = IBroadcaster:new("LevelManager")
+    setmetatable(instance, LevelManager)
+    
     instance._currentLevel = nil
     instance._previousLevel = nil
     instance._nextLevelModule = nil
@@ -77,6 +87,9 @@ function LevelManager:loadLevel(levelObj, entities, systems)
     for i = 1, #level_entities do
         table.insert(entities, level_entities[i])
     end
+
+    MessageCenter.static.getInstance():broadcastImmediate(self, Event_LevelLoaded, { level = self._currentLevel })
+
 end
 
 function LevelManager:tick(entities, systems)
@@ -85,6 +98,7 @@ function LevelManager:tick(entities, systems)
             local levelToUnload = self._unloadLevelsList[i]
             MUtils.Log(LOG_MODULE, "Unloading level: " .. levelToUnload:getName())
             levelToUnload:unload(entities, systems)
+            MessageCenter.static.getInstance():broadcastImmediate(self, Event_LevelUnloaded, { level = levelToUnload })
         end
         self._unloadLevelsList = {}
     end
@@ -95,4 +109,8 @@ function LevelManager:tick(entities, systems)
     end
 end
 
-return LevelManager
+return {
+    LevelManager = LevelManager,
+    Event_LevelLoaded = Event_LevelLoaded,
+    Event_LevelUnloaded = Event_LevelUnloaded
+}

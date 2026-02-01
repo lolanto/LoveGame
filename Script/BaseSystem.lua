@@ -21,8 +21,9 @@ BaseSystem.__index = BaseSystem
 
 ---cst, 系统构造函数
 ---@param nameOfSystem string 系统名称
-function BaseSystem:new(nameOfSystem)
-    local instance = setmetatable({}, self)
+function BaseSystem:new(nameOfSystem, o)
+    o = o or {}
+    local instance = setmetatable(o, self)
     instance._nameOfSystem = nameOfSystem
     instance._requiredComponentInfos = {}
     instance._collectedComponents = {}
