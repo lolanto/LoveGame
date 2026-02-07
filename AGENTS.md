@@ -18,9 +18,13 @@
 - **字符串声明**: 应该使用单引号\'\'定义字符串
 
 ### Lua 最佳实践
-- **局部变量**: 始终优先使用 `local` 声明变量。
 - **模块化**: 每个文件应返回一个 Table 或 Class。
 - **面向对象**: 使用项目约定的 Class 模拟方式 (参考 `BaseComponent` 或 `BaseSystem`)。
+
+### 开发安全性检查
+1. 接口逻辑明确不应该修改当前对象内部数据，应添加后缀`_const`
+2. 当传递对象的引用时已明确对象不应被修改，应使用`makeReadOnly`进行修饰
+3. 逻辑中尽可能使用`assert`对非预期值提前拦截
 
 ### 类声明
 当需要声明某个类型时，需要遵守以下规则：
@@ -48,10 +52,7 @@ return {
 #### 单例类声明
 当需要声明单例类时，除了遵守一般类的声明以外，还需要符合下述代码规范
 ```lua
---- @class SampleClass
---- @field MemberVariable VariableType
---- @field MemberFunction 
---- more filed desc....
+--- filed desc....
 local SingletonClass = {}
 SingletonClass.__index = SingletonClass
 SingletonClass.static = {}
@@ -67,6 +68,23 @@ end
 function SingletonClass:new()
     assert(SingletonClass.static.instance == nil, 'SingletonClass can only have one instance!')
     --- existing code...
+end
+```
+
+### 日志规范
+使用 `Script/Logger.lua` ，避免使用裸 `print`。
+- 不同的日志等级可以使用诸如`MUtils.Log`，`MUtils.Warning`等方式。
+- 某一管理器(Manager)或者系统(System)及其关联组件(Component)需要打印日志前，都需要在文件开头声明日志类型，以及在管理器或者系统初始化时注册日志类型。示例代码：
+```lua
+--- 文件开头日志类型声明
+local MUtils = require('MUtils')
+local LOG_MODULE = 'NameOfLogModule'
+MUtils.RegisterModule(LOG_MODULE)
+
+function xxx:sampleFunc()
+    --- existing code...
+    --- 需要打印日志时
+    MUtils.Log(LOG_MODULE, 'concrete log')
 end
 ```
 
@@ -144,32 +162,5 @@ return {
 - `Log`: 项目开发日志
 - `main.lua`: 程序入口，负责加载 World，启动主循环。
 
-## 5. 常用工具与库 (Utils & Libs)
-- **日志**: 使用 `Script/Logger.lua` ，避免使用裸 `print`。
-    - 不同的日志等级可以使用诸如`MUtils.Log`，`MUtils.Warning`等方式。
-    - 某一管理器(Manager)或者系统(System)及其关联组件(Component)需要打印日志前，都需要在文件开头声明日志类型，以及在管理器或者系统初始化时注册日志类型。示例代码：
-```lua
---- 文件开头日志类型声明
-local MUtils = require('MUtils')
-local LOG_MODULE = 'NameOfLogModule'
-
---- 管理器或者系统初始化function内
-function xxx:new()
-    --- existing code...
-    MUtils.RegisterModule(LOG_MODULE)
-    --- existing code...
-end
-
-function xxx:sampleFunc()
-    --- existing code...
-    --- 需要打印日志时
-    MUtils.Log(LOG_MODULE, 'concrete log')
-end
-```
-- **数学**: 尽量使用Lua以及Love2D 自带数学库。
-- **资源路径**: 引用资源时使用相对于项目根目录的路径。
-
-## 6. 注意事项 (Critical Notes)
-- **性能**: 避免在 `Update` 循环中频繁创建临时 Table (GC 压力)。
+## 5. 注意事项 (Critical Notes)
 - **Require 路径**: 使用点号 `.` 分隔路径 (如 `require("Component.TransformCMP")`)。搜索路径默认带上了`Script`以及`Script.utils`
-- **全局环境**: 严禁污染全局 `_G`，除非是架构层面的单例。

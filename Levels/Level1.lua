@@ -130,6 +130,11 @@ function Level:load(systems)
     self:addEntity(wallRight_deb)
     wallRight:boundChildEntity(wallRight_deb)
 
+
+    local LevelManager = require('LevelManager').LevelManager
+    LevelManager.static.getInstance():requestUnloadLevelsExceptCurrent()
+
+    
     return self:getEntities()
 end
 

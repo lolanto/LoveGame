@@ -1,7 +1,9 @@
 local MUtils = require('MUtils')
+local LOG_MODULE = "MessageCenter"
+MUtils.RegisterModule(LOG_MODULE)
+
 local EventInterfaces = require('EventInterfaces')
 
-local LOG_MODULE = "MessageCenter"
 
 --[[
     事件回调句柄 - 封装回调函数、上下文及调试信息
@@ -112,9 +114,6 @@ end
 function MessageCenter:new()
     assert(MessageCenter.static.instance == nil, 'MessageCenter can only have one instance!')
     local instance = setmetatable({}, MessageCenter)
-
-    -- 注册日志模块
-    MUtils.RegisterModule(LOG_MODULE)
 
     -- 事件对象映射: { ["EventName"] = EventObject }
     instance.events = {}

@@ -1,6 +1,6 @@
 local MUtils = require('MUtils')
-
 local LOG_MODULE = "LevelManager"
+MUtils.RegisterModule(LOG_MODULE)
 
 local MessageCenter = require('MessageCenter').MessageCenter
 local IBroadcaster = require('EventInterfaces').IBroadcaster
@@ -28,7 +28,7 @@ end
 function LevelManager:new()
     --- 只能有一个单例
     assert(LevelManager.static.instance == nil, "LevelManager 只能有一个实例！")
-    MUtils.RegisterModule(LOG_MODULE)
+    
     
     -- 继承自 IBroadcaster
     local instance = IBroadcaster:new("LevelManager")
