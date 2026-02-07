@@ -76,11 +76,17 @@ end
 --- @parma enable boolean 启动或者关闭回放功能
 --- @return nil
 function TimeRewindSys:enableRewind(enable)
+    local TimeManager = require('TimeManager').TimeManager.static.getInstance()
     if enable and not self._isRewinding then
         self._isRewinding = true
+        -- 进入时间回溯的瞬间，强制重置时间速率为正常值
+        -- 这样可以防止回溯结束后玩家仍然处于慢动作状态，同时也明确了回溯操作本身是“打破”时间流的行为
+        TimeManager:setTimeScale(1.0)
     elseif not enable and self._isRewinding then
         self._isRewinding = false
         self:truncateHistory()
+        -- 退出回溯时，再次确保时间速率为1.0（虽然进入时已设置，但这符合"回溯结束后保持默认"的预期）
+        TimeManager:setTimeScale(1.0)
     end
 end
 

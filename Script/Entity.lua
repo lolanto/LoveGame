@@ -1,4 +1,8 @@
 
+local MUtils = require('MUtils')
+local LOG_MODULE = 'Entity'
+MUtils.RegisterModule(LOG_MODULE)
+
 --- @class Entity
 --- @field _nameOfEntity string
 --- @field _components table<number, BaseComponent>
@@ -26,6 +30,7 @@ function Entity:new(nameOfEntity)
     instance._isVisible = false -- 当前Entity是否可见
     instance._isEnable = false -- 当前Entity是否被激活
     instance._needRewind = false -- 是否需要回溯
+    instance._isTimeScaleException = false -- 是否不受时间缩放影响
     instance._level = nil -- Entity所属的Level ReadOnly
     return instance
 end
@@ -34,6 +39,41 @@ end
 --- @return string
 function Entity:getName_const()
     return self._nameOfEntity
+end
+
+--- 设置实体是否为时间缩放例外
+--- @param isException boolean
+function Entity:setTimeScaleException(isException)
+    self._isTimeScaleException = isException
+end
+
+--- 获取实体是否为时间缩放例外（递归检查父级）
+--- 规则：
+--- 1. 优先使用父实体的设置（如果存在父实体）。
+--- 2. 如果当前实体设置与父实体（或最终生效的）设置不一致，打印警告。
+--- @return boolean
+function Entity:isTimeScaleException_const()
+    -- 获取实体自身的设置
+    local selfIsException = self._isTimeScaleException
+
+    -- 检查父实体
+    local parent = self._parentEntity
+    
+    if parent then
+        local parentIsException = parent:isTimeScaleException_const()
+        
+        -- 检查不一致并打印警告
+        if selfIsException ~= parentIsException then
+            local entityName = self:getName_const() or "Unknown"
+            local parentName = parent:getName_const() or "Unknown"
+
+            MUtils.Warning(LOG_MODULE, string.format("Hierarchy Warning: Entity '%s' has timeScaleException=%s but its parent '%s' results in %s. Using parent's value.",
+                entityName, tostring(selfIsException), parentName, tostring(parentIsException)))
+        end
+        return parentIsException
+    end
+
+    return selfIsException
 end
 
 --- 绑定一个组件会检查是否已经绑定了同类组件并报错

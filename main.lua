@@ -32,6 +32,7 @@ function love.load()
     MUtils.RegisterModule("Main", "INFO", "DEBUG")
     
     local MOD_Entity = require('Entity')
+    local TimeManager = require('TimeManager').TimeManager
 
     systems['TransformUpdateSys'] = require('System.TransformUpdateSys').TransformUpdateSys:new()
     systems['MainCharacterInteractSys'] = require('System.MainCharacterInteractSys').MainCharacterInteractSys:new()
@@ -44,6 +45,8 @@ function love.load()
     systems['TriggerSys'] = require('System.Gameplay.TriggerSys').TriggerSys:new()
     systems['TriggerSys']:setPhysicSys(systems['PhysicSys'])
     systems['TimeRewindSys'] = require('System.Gameplay.TimeRewindSys').TimeRewindSys:new()
+    systems['TimeDilationSys'] = require('System.Gameplay.TimeDilationSys').TimeDilationSys:new()
+    systems['TimeDilationSys']:setTimeRewindSys(systems['TimeRewindSys'])
 
     local image = love.graphics.newImage("Resources/debug_characters.png")
     print(image)
@@ -66,6 +69,8 @@ function love.load()
 
     table.insert(entities, player)
     player:setNeedRewind(true)
+    -- 标记主角为时间管理的例外实体，使其不受慢动作影响（或者说自动补偿）
+    player:setTimeScaleException(true)
 
     local entityCam = MOD_Entity:new('camera')
     entityCam:boundComponent(require('Component.CameraCMP').CameraCMP:new())
@@ -155,6 +160,7 @@ function love.update(deltaTime)
             mainCharCtrlCmp:update(deltaTime, userInteractController)
         end
     end
+    systems['TimeDilationSys']:processUserInput(userInteractController)
 
     systems['TimeRewindSys']:processUserInput(userInteractController)
 
@@ -166,6 +172,7 @@ function love.update(deltaTime)
     systems['DisplaySys']:preCollect()
     systems['PhysicSys']:preCollect()
     systems['PhysicVisualizeSys']:preCollect()
+    systems['TimeDilationSys']:preCollect()
     systems['TimeRewindSys']:preCollect()
     systems['TriggerSys']:preCollect()
     
@@ -185,6 +192,7 @@ function love.update(deltaTime)
         end
     end
 
+    systems['TimeDilationSys']:tick(deltaTime)
     systems['TimeRewindSys']:tick(deltaTime)
     
     if systems['TimeRewindSys']:getIsRewinding() then

@@ -101,7 +101,10 @@ end
 --- @param deltaTime number 两次update之间的时间差(second)
 --- @return nil
 function AnimationCMP:update(deltaTime)
-    local newTimeForNextFrame = self._timeForNextFrame - deltaTime
+    local TimeManager = require('TimeManager').TimeManager.static.getInstance()
+    local dt = TimeManager:getDeltaTime(deltaTime, self:getEntity())
+
+    local newTimeForNextFrame = self._timeForNextFrame - dt
     if newTimeForNextFrame < 0 then
         self._curFrameIdx = (self._curFrameIdx % self._frameCount) + 1
         self._timeForNextFrame = self._invFrameRate + newTimeForNextFrame

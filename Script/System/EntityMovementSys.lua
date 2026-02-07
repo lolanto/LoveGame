@@ -22,13 +22,16 @@ end
 ---@return nil
 function EntityMovementSys:tick(deltaTime)
     MOD_BaseSystem.tick(self, deltaTime)
+    local TimeManager = require('TimeManager').TimeManager.static.getInstance()
     for i = 1, #self._collectedComponents['MovementCMP'] do
         ---@type MovementCMP
         local movementCmp = self._collectedComponents['MovementCMP'][i]
         ---@type TransformCMP
         local transformCmp = self._collectedComponents['TransformCMP'][i]
+        
+        local dt = TimeManager:getDeltaTime(deltaTime, movementCmp:getEntity_const())
         local vecX, vecY = movementCmp:getVelocity_const()
-        local dx, dy = vecX * deltaTime, vecY * deltaTime
+        local dx, dy = vecX * dt, vecY * dt
         local affect = nil
         if type(movementCmp.getAffectMode) == 'function' then
             affect = movementCmp:getAffectMode_const()
