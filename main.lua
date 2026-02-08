@@ -88,7 +88,7 @@ function love.load()
     -- entity:boundChildEntity(entity2)
 
     local LevelManager = require('LevelManager').LevelManager
-    LevelManager.static.getInstance():requestLoadLevel('Levels.Level1')
+    LevelManager.static.getInstance():requestLoadLevel('Level1')
 
     mainCharacterEntity = entity
     mainCameraEntity = entity
