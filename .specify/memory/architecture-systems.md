@@ -16,6 +16,7 @@ This document indexes all the ECS Systems currently implemented in the LoveGame 
 - [MainCharacterInteractSys](./systems/main-character-interact-system.md): Handles Player input and conversion to movement.
 - [PatrolSys](./systems/patrol-system.md): AI logic for moving entities along paths or around targets.
 - [TriggerSys](./systems/trigger-system.md): Responds to physics collisions to trigger game logic.
+- [BlackHoleSys](./systems/black-hole-system.md): Manages Black Hole skills and gravity physics.
 
 ## Time Mechanics
 - [TimeDilationSys](./systems/time-dilation-system.md): Handles "Slow Motion" effects.

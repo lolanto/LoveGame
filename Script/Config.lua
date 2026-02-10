@@ -2,6 +2,18 @@
 local Config = {
     IS_DEBUG = true,
     
+    -- Gameplay Configuration
+    BlackHole = {
+        TriggerKey = 't',
+        Radius = 5.0,
+        ForceStrength = 400.0,
+        MinRadius = 0.5,
+        Duration = 10.0,
+        SpawnOffset = {x = 0, y = -3},
+        SpawnCooldown = 1.0,
+        DebugColor = {0, 0, 0, 0.8}
+    },
+
     -- Logger Configuration
     Logger = {
         EnableConsole = true,

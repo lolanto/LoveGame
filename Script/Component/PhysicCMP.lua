@@ -285,10 +285,14 @@ function PhysicCMP:getRewindState_const()
     if not self._body or self._body:isDestroyed() then return nil end
     local vx, vy = self._body:getLinearVelocity()
     local av = self._body:getAngularVelocity()
+    local ld = self._body:getLinearDamping()
+    local ad = self._body:getAngularDamping()
     return {
         vx = vx,
         vy = vy,
-        angVel = av
+        angVel = av,
+        ld = ld,
+        ad = ad
     }
 end
 
@@ -298,6 +302,8 @@ function PhysicCMP:restoreRewindState(state)
     
     self._body:setLinearVelocity(state.vx, state.vy)
     self._body:setAngularVelocity(state.angVel)
+    if state.ld then self._body:setLinearDamping(state.ld) end
+    if state.ad then self._body:setAngularDamping(state.ad) end
 end
 
 function PhysicCMP:lerpRewindState(stateA, stateB, t)
@@ -310,6 +316,21 @@ function PhysicCMP:lerpRewindState(stateA, stateB, t)
     
     -- 线性插值角速度
     local angVel = stateA.angVel + (stateB.angVel - stateA.angVel) * t
+
+    -- 线性插值阻尼
+    if stateA.ld and stateB.ld then
+        local ld = stateA.ld + (stateB.ld - stateA.ld) * t
+        self._body:setLinearDamping(ld)
+    elseif stateA.ld then
+         self._body:setLinearDamping(stateA.ld)
+    end
+    
+    if stateA.ad and stateB.ad then
+        local ad = stateA.ad + (stateB.ad - stateA.ad) * t
+        self._body:setAngularDamping(ad)
+    elseif stateA.ad then
+         self._body:setAngularDamping(stateA.ad)
+    end
 
     self._body:setLinearVelocity(vx, vy)
     self._body:setAngularVelocity(angVel)
