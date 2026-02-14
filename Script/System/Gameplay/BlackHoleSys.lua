@@ -164,12 +164,11 @@ function BlackHoleSys:applyAttraction(bhTrans, gravCmp, dt)
     
     for i = 1, #physCmps do
         local pCmp = physCmps[i]
-        local body = pCmp:getBody()
         local targetEntity = pCmp:getEntity()
         
         -- Skip self, ignored entities, and static bodies
-        if body and body:getType() == 'dynamic' and targetEntity and not gravCmp:isIgnored_const(targetEntity) then
-             local tx, ty = body:getPosition()
+        if pCmp and pCmp:getBodyType_const() == 'dynamic' and targetEntity and not gravCmp:isIgnored_const(targetEntity) then
+             local tx, ty = pCmp:getBodyPosition_const()
              
              local dx = bhX - tx
              local dy = bhY - ty
@@ -184,8 +183,8 @@ function BlackHoleSys:applyAttraction(bhTrans, gravCmp, dt)
                  -- F = -v * m * damping
                  -- This is stateless and won't dirty the body's actual setDamping property
                  
-                 local vx, vy = body:getLinearVelocity()
-                 local mass = body:getMass()
+                 local vx, vy = pCmp:getLinearVelocity_const()
+                 local mass = pCmp:getMass_const()
                  local simulatedDamping = 0.0
                  
                  if dist < minRadius then
@@ -200,14 +199,14 @@ function BlackHoleSys:applyAttraction(bhTrans, gravCmp, dt)
                      -- Inverse Square Law: F = k / r^2
                      local strength = forceStr / (effectiveDist * effectiveDist)
                      local dirX, dirY = dx/dist, dy/dist
-                     body:applyForce(dirX * strength, dirY * strength)
+                     pCmp:applyForce(dirX * strength, dirY * strength)
                  end
                  
                  if simulatedDamping > 0 then
                      -- Apply drag force
                      local dragForceX = -vx * mass * simulatedDamping
                      local dragForceY = -vy * mass * simulatedDamping
-                     body:applyForce(dragForceX, dragForceY)
+                     pCmp:applyForce(dragForceX, dragForceY)
                  end
              end
         end
