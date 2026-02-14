@@ -5,6 +5,11 @@
 **Status**: Draft
 **Input**: User description: "帮我开发一个玩法功能——黑洞。这个功能让玩家可以在自身正上方3m的位置，生成一个影响半径5m的黑洞。黑洞会将周围可移动的物体吸引过来。黑洞的持续时间是10s"
 
+## Clarifications
+
+### Session 2026-02-14
+-   Q: How should the 'T' key input be detected? → A: Input MUST be processed via `processUserInput(controller)` interface, using a `UserInteractDesc` consume info, rather than direct `love.keyboard` calls, to support uniform input management.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Activate Black Hole (Priority: P1)
@@ -38,7 +43,8 @@ As a player, I want the Black Hole to attract nearby objects so that they are pu
 3. **Given** a static object (e.g., wall, ground) within 5 meters, **When** the Black Hole is active, **Then** the static object remains in place.
 
 ---
-
+Mechanism**: Input binding MUST be handled via the `processUserInput` interface on `BlackHoleSys`, using `UserInteractController` to consume the input state (e.g. `tryToConsumeInteractInfo`). Direct usage of `love.keyboard` is prohibited.
+    -   **
 ## Functional Requirements *(mandatory)*
 
 1.  **Skill Activation**:

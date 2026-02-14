@@ -13,5 +13,5 @@
 5. Verify Black Hole disappears after 10s.
 
 ## Configuration
-- `GravitationalFieldCMP.lua` defines default radius/strength.
-- `BlackHoleSys.lua` defines key binding.
+- Input and Balancing values are in `Config.lua` (Table: `Config.BlackHole`).
+- `GravitationalFieldCMP.lua` defines component data structure.

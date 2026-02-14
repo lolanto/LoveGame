@@ -176,6 +176,8 @@ function love.update(deltaTime)
             ---@cast mainCharCtrlCmp MainCharacterControllerCMP
             mainCharCtrlCmp:update(deltaTime, userInteractController)
         end
+        -- Update BlackHoleSys target to current main character
+        systems['BlackHoleSys']:setMainCharacter(mainCharacterEntity)
     end
     systems['TimeDilationSys']:processUserInput(userInteractController)
     systems['BlackHoleSys']:processUserInput(userInteractController)

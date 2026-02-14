@@ -23,7 +23,7 @@
 
 **Goal**: Player can press 'T' to spawn a Black Hole entity at offset position which lasts 10s.
 
-- [x] T006 [US1] Implement input listening for 'T' key in `BlackHoleSys` (referencing `love.keyboard.isDown` or similar) in `Script/System/Gameplay/BlackHoleSys.lua`
+- [x] T006 [US1] Implement input listening for 'T' key via `processUserInput` interface in `Script/System/Gameplay/BlackHoleSys.lua` (Refactored from direct `love.keyboard`)
 - [x] T007 [US1] Implement `spawnBlackHole` function to create entity with `TransformCMP`, `GravitationalFieldCMP`, `LifeTimeCMP` in `Script/System/Gameplay/BlackHoleSys.lua`
 - [x] T008 [US1] Implement lifetime countdown logic to destroy entity after duration in `Script/System/Gameplay/BlackHoleSys.lua`
 - [x] T009 [US1] Add `DebugColorCircleCMP` to spawned entity for visualization in `Script/System/Gameplay/BlackHoleSys.lua`

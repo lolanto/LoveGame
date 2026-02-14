@@ -16,7 +16,7 @@
 -   **Architecture Fit**:
     -   **Pure ECS**: We will add `GravitationalFieldCMP` (Data) and `BlackHoleSys` (Logic).
     -   **Physics**: We will use `love.physics.Body:applyForce`.
-    -   **Input**: We'll need to check for 'T' key press.
+    -   **Input**: Implement `processUserInput` to consume 'T' key press via `UserInteractController`.
 
 ### Codebase Map
 
@@ -44,23 +44,28 @@
 
 ### Phase 0: Research (Validation)
 
--   [ ] **Goal**: Resolve "How to access all physics entities from `BlackHoleSys`".
-    -   Systems usually process *their* entities. `BlackHoleSys` owns "Black Holes". It acts *on* "Physical Entities".
-    -   Need to check if `LevelManager` or a shared resource allows querying other components.
+-   [x] **Goal**: Resolve "How to access all physics entities from `BlackHoleSys`".
+    -   **Result**: Inject `PhysicSys` into `BlackHoleSys` and read `_collectedComponents['PhysicCMP']`.
+    -   See [research.md](research.md).
 
 ### Phase 1: Design & Contracts
 
--   [ ] **Data Model**: `GravitationalFieldCMP` structure with strict types.
--   [ ] **API**: Input configuration.
+-   [x] **Data Model**: `GravitationalFieldCMP` structure defined in [data-model.md](data-model.md).
+-   [x] **API**: Input configuration defined in `Config.lua`.
+-   [x] **Input**: Strategy defined (`processUserInput`).
 
 ### Phase 2: Implementation
 
-1.  **Create Components**: `GravitationalFieldCMP`.
+1.  **Create Components**: `GravitationalFieldCMP`, `LifeTimeCMP` (if not exists), `DebugColorCircleCMP`.
 2.  **Create System**: `BlackHoleSys`.
-    -   Handle 'T' input (spawn).
-    -   Handle Lifecycle (duration).
-    -   Handle Physics (force application).
-3.  **Integration**: Add to `Config.lua` or system loader.
+    -   Implement `processUserInput(controller)` for 'T' key detection.
+    -   Implement `tick(dt)` for validity check & force application.
+    -   Implement `applyAttraction` using `physicsSys` list.
+3.  **Integration**:
+    -   Add `BlackHoleSys` to `main.lua`.
+    -   Inject `PhysicSys` into `BlackHoleSys`.
+    -   Add `Config` entries.
+
 
 ## Needs Clarification
 -   How to iterate *other* entities inside a System? (Will research in Phase 0).

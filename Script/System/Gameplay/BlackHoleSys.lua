@@ -21,9 +21,9 @@ function BlackHoleSys:new()
     instance._mainCharacter = nil
     instance._inputCooldown = 0.0
     instance._spawnCooldown = Config.BlackHole.SpawnCooldown 
+    instance._spawnRequested = false
     
     -- Config
-    instance._triggerKey = Config.BlackHole.TriggerKey
     instance._spawnOffset = Config.BlackHole.SpawnOffset
     
     return instance
@@ -37,6 +37,23 @@ function BlackHoleSys:setMainCharacter(entity)
     self._mainCharacter = entity
 end
 
+function BlackHoleSys:processUserInput(userInteractController)
+    local _keyPressedCheckFunc = function(keyObj)
+        if keyObj == nil then return false end
+        local isPressed, _ = keyObj:getIsPressed()
+        return isPressed
+    end
+
+    -- Check for 'T' key press using UserInteractController
+    local consumeList = {
+        key_t = require('UserInteractDesc').InteractConsumeInfo:new(_keyPressedCheckFunc)
+    }
+    
+    if userInteractController:tryToConsumeInteractInfo(consumeList) then
+        self._spawnRequested = true
+    end
+end
+
 function BlackHoleSys:tick(deltaTime)
     MOD_BaseSystem.tick(self, deltaTime)
     
@@ -48,11 +65,14 @@ function BlackHoleSys:tick(deltaTime)
     if self._inputCooldown > 0 then
         self._inputCooldown = self._inputCooldown - deltaTime
     else
-        if love.keyboard.isDown(self._triggerKey) then
+        if self._spawnRequested then
              self:spawnBlackHole()
              self._inputCooldown = self._spawnCooldown
         end
     end
+    
+    -- Reset spawn request to prevent buffering during cooldown
+    self._spawnRequested = false
     
     local gravCmpList = self._collectedComponents['GravitationalFieldCMP']
     local lifeCmpList = self._collectedComponents['LifeTimeCMP']
@@ -112,7 +132,10 @@ function BlackHoleSys:spawnBlackHole()
     local LifeTimeCMP = require('Component.Gameplay.LifeTimeCMP').LifeTimeCMP
     local DebugColorCircleCMP = require('Component.DrawableComponents.DebugColorCircleCMP').DebugColorCircleCMP
     
-    bhEntity:boundComponent(TransformCMP:new(spawnX, spawnY))
+    local bhTransCmp = TransformCMP:new()
+    bhTransCmp:setPosition(spawnX, spawnY)
+    bhEntity:boundComponent(bhTransCmp)
+    
     local gravLimitCmp = GravitationalFieldCMP:new(Config.BlackHole.Radius, Config.BlackHole.ForceStrength, Config.BlackHole.MinRadius)
     gravLimitCmp:addIgnoreEntity(self._mainCharacter)
     bhEntity:boundComponent(gravLimitCmp)
