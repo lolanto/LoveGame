@@ -33,7 +33,32 @@ function Entity:new(nameOfEntity)
     instance._needRewind = false -- 是否需要回溯
     instance._isTimeScaleException = false -- 是否不受时间缩放影响
     instance._level = nil -- Entity所属的Level ReadOnly
+    
+    -- [New ECS Architecture]
+    instance._refCount = 0 -- Reference Count for TimeRewind/World management
+    instance._world = nil -- Reference to World (if registered)
+    instance._isArchDirty = false -- Flag for Deferred Archetype Update
+    
     return instance
+end
+
+--- Retrieves the Entity ID (using memory address or a generated ID if available)
+--- Currently using self as ID for table keys if object
+function Entity:getID_const()
+    return tostring(self)
+end
+
+--- Increments the reference count
+function Entity:retain()
+    self._refCount = self._refCount + 1
+end
+
+--- Decrements the reference count
+function Entity:release()
+    self._refCount = self._refCount - 1
+    if self._refCount < 0 then
+        error("Entity refCount < 0: " .. self._nameOfEntity)
+    end
 end
 
 function Entity:markForDeletion()

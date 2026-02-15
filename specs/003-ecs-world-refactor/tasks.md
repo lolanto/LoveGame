@@ -17,15 +17,15 @@
 
 **Goal**: Implement the foundational classes (`World`, `ComponentsView`) and update `Entity` structure.
 
-- [ ] T001 Create `Script/ComponentsView.lua` module structure with `ComponentsView.EMPTY` shared sentinel [Script/ComponentsView.lua](Script/ComponentsView.lua)
-- [ ] T002 Implement `ComponentsView` initialization and SoA arrays for optional/required components [Script/ComponentsView.lua](Script/ComponentsView.lua)
-- [ ] T003 Implement `ComponentsView:add(entity)` including `entity_to_index` map update [Script/ComponentsView.lua](Script/ComponentsView.lua)
-- [ ] T004 Implement `ComponentsView:remove(entityID)` using `table.remove` (shift) and updating `entity_to_index` map for shifted elements [Script/ComponentsView.lua](Script/ComponentsView.lua)
-- [ ] T005 Implement `ComponentsView` View Key generation logic (Sort + ReadOnly flags) [Script/ComponentsView.lua](Script/ComponentsView.lua)
-- [ ] T006 Update `Script/Entity.lua` to include `_refCount`, `_world`, and `isArchDirty` properties [Script/Entity.lua](Script/Entity.lua)
-- [ ] T007 Implement `Entity:retain()` and `Entity:release()` methods for reference counting [Script/Entity.lua](Script/Entity.lua)
-- [ ] T008 Create `Script/World.lua` Singleton skeleton with strict `require` pattern (no global) [Script/World.lua](Script/World.lua)
-- [ ] T009 Implement `World:getComponentsView(requiredComponentInfos)` which parses `ComponentRequirementDesc` table to generate View Key and return cached View [Script/World.lua](Script/World.lua)
+- [x] T001 Create `Script/ComponentsView.lua` module structure with `ComponentsView.EMPTY` shared sentinel [Script/ComponentsView.lua](Script/ComponentsView.lua)
+- [x] T002 Implement `ComponentsView` initialization and SoA arrays for optional/required components [Script/ComponentsView.lua](Script/ComponentsView.lua)
+- [x] T003 Implement `ComponentsView:add(entity)` including `entity_to_index` map update [Script/ComponentsView.lua](Script/ComponentsView.lua)
+- [x] T004 Implement `ComponentsView:remove(entity)` using `table.remove` (shift) and updating `entity_to_index` map for shifted elements [Script/ComponentsView.lua](Script/ComponentsView.lua)
+- [x] T005 Implement `ComponentsView` View Key generation logic (Sort + ReadOnly flags) [Script/ComponentsView.lua](Script/ComponentsView.lua)
+- [x] T006 Update `Script/Entity.lua` to include `_refCount`, `_world`, and `isArchDirty` properties [Script/Entity.lua](Script/Entity.lua)
+- [x] T007 Implement `Entity:retain()` and `Entity:release()` methods for reference counting [Script/Entity.lua](Script/Entity.lua)
+- [x] T008 Create `Script/World.lua` Singleton skeleton with strict `require` pattern (no global) [Script/World.lua](Script/World.lua)
+- [x] T009 Implement `World:getComponentsView(requiredComponentInfos)` which parses `ComponentRequirementDesc` table to generate View Key and return cached View [Script/World.lua](Script/World.lua)
 
 ## Phase 2: System Integration
 
