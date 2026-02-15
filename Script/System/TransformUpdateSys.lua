@@ -9,10 +9,11 @@ local TransformUpdateSys = setmetatable({}, MOD_BaseSystem)
 TransformUpdateSys.__index = TransformUpdateSys
 TransformUpdateSys.SystemTypeName = "TransformUpdateSys"
 
-function TransformUpdateSys:new()
-    local instance = setmetatable(MOD_BaseSystem.new(self, TransformUpdateSys.SystemTypeName), self)
+function TransformUpdateSys:new(world)
+    local instance = setmetatable(MOD_BaseSystem.new(self, TransformUpdateSys.SystemTypeName, world), self)
     local ComponentRequirementDesc = require('BaseSystem').ComponentRequirementDesc
     instance:addComponentRequirement(TransformCMP.ComponentTypeID, ComponentRequirementDesc:new(true, false))
+    instance:initView()
     return instance
 end
 
@@ -20,12 +21,14 @@ end
 ---@param deltaTime number
 function TransformUpdateSys:tick(deltaTime)
     MOD_BaseSystem.tick(self, deltaTime)
-    local transforms = self._collectedComponents[TransformCMP.ComponentTypeName]
-    if transforms == nil then
-        return
-    end
-
-    for i = 1, #transforms do
+    
+    local view = self:getComponentsView()
+    local transforms = view._components[TransformCMP.ComponentTypeID]
+    
+    if not transforms then return end
+    
+    local count = view._count
+    for i = 1, count do
         ---@type TransformCMP
         local transform = transforms[i]
         if transform ~= nil then

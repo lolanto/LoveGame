@@ -5,12 +5,14 @@ local TriggerSys = setmetatable({}, MOD_BaseSystem)
 TriggerSys.__index = TriggerSys
 TriggerSys.SystemTypeName = "TriggerSys"
 
-function TriggerSys:new()
-    local instance = setmetatable(MOD_BaseSystem.new(self, TriggerSys.SystemTypeName), self)
+function TriggerSys:new(world)
+    local instance = setmetatable(MOD_BaseSystem.new(self, TriggerSys.SystemTypeName, world), self)
     local ComponentRequirementDesc = require('BaseSystem').ComponentRequirementDesc
+    local TriggerCMP = require('Component.Gameplay.TriggerCMP').TriggerCMP
     
     -- 我们注册 TriggerCMP 需求，虽然核心逻辑是响应 Collision 事件，但这能让系统感知 Trigger 组件的存在。
-    instance:addComponentRequirement(require('Component.Gameplay.TriggerCMP').TriggerCMP.ComponentTypeID, ComponentRequirementDesc:new(true, false))
+    instance:addComponentRequirement(TriggerCMP.ComponentTypeID, ComponentRequirementDesc:new(true, false))
+    instance:initView()
     
     instance._physicSys = nil
     return instance

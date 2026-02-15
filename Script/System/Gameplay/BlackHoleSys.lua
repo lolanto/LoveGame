@@ -3,30 +3,95 @@ local MOD_BaseSystem = require('BaseSystem').BaseSystem
 local LevelManager = require('LevelManager').LevelManager
 local MUtils = require('MUtils')
 local Config = require('Config').Config
+local GravitationalFieldCMP = require('Component.Gameplay.GravitationalFieldCMP').GravitationalFieldCMP
+local LifeTimeCMP = require('Component.Gameplay.LifeTimeCMP').LifeTimeCMP
+local TransformCMP = require('Component.TransformCMP').TransformCMP
+local PhysicCMP = require('Component.PhysicCMP').PhysicCMP
 
 ---@class BlackHoleSys : BaseSystem
 local BlackHoleSys = setmetatable({}, MOD_BaseSystem)
 BlackHoleSys.__index = BlackHoleSys
 BlackHoleSys.SystemTypeName = "BlackHoleSys"
 
-function BlackHoleSys:new()
-    local instance = setmetatable(MOD_BaseSystem.new(self, BlackHoleSys.SystemTypeName), self)
+function BlackHoleSys:new(world)
+    local instance = setmetatable(MOD_BaseSystem.new(self, BlackHoleSys.SystemTypeName, world), self)
     local ComponentRequirementDesc = require('BaseSystem').ComponentRequirementDesc
     
-    instance:addComponentRequirement(require('Component.Gameplay.GravitationalFieldCMP').GravitationalFieldCMP.ComponentTypeID, ComponentRequirementDesc:new(true, false))
-    instance:addComponentRequirement(require('Component.Gameplay.LifeTimeCMP').LifeTimeCMP.ComponentTypeID, ComponentRequirementDesc:new(true, false))
-    instance:addComponentRequirement(require('Component.TransformCMP').TransformCMP.ComponentTypeID, ComponentRequirementDesc:new(true, false))
+    instance:addComponentRequirement(GravitationalFieldCMP.ComponentTypeID, ComponentRequirementDesc:new(true, false))
+    instance:addComponentRequirement(LifeTimeCMP.ComponentTypeID, ComponentRequirementDesc:new(true, false))
+    instance:addComponentRequirement(TransformCMP.ComponentTypeID, ComponentRequirementDesc:new(true, false))
     
-    instance._physicSys = nil
-    instance._mainCharacter = nil
-    instance._inputCooldown = 0.0
     instance._spawnCooldown = Config.BlackHole.SpawnCooldown 
     instance._spawnRequested = false
-    
-    -- Config
+    instance._inputCooldown = 0
     instance._spawnOffset = Config.BlackHole.SpawnOffset
     
+    instance:initView()
+    -- Create a separate view for PhysicCMP since we need to iterate ALL physics objects against each black hole
+    instance._physicsView = world:getComponentsView({
+        [PhysicCMP.ComponentTypeID] = ComponentRequirementDesc:new(true, true),
+        [TransformCMP.ComponentTypeID] = ComponentRequirementDesc:new(true, true) -- Need position? Or use Body position
+    })
+    
     return instance
+end
+
+function BlackHoleSys:setupPhysicSys(sys)
+    -- Deprecated in favor of self-managed view
+end
+
+function BlackHoleSys:setMainCharacter(entity)
+    self._mainCharacter = entity
+end
+
+function BlackHoleSys:tick(deltaTime)
+    MOD_BaseSystem.tick(self, deltaTime)
+    
+    if self._spawnRequested then
+        self:spawnBlackHole()
+        self._spawnRequested = false
+    end
+    
+    -- Iterate Black Holes
+    local view = self:getComponentsView()
+    local gravCmpList = view._components[GravitationalFieldCMP.ComponentTypeID]
+    local lifeCmpList = view._components[LifeTimeCMP.ComponentTypeID]
+    local transCmpList = view._components[TransformCMP.ComponentTypeID]
+    
+    if not gravCmpList or not lifeCmpList or not transCmpList then return end
+    
+    local count = view._count
+    -- Use game time from TimeManager if needed, but here simple subtraction?
+    -- Actually LifeTimeCMP needs elapsed time.
+    local tm = require('TimeManager').TimeManager.static.getInstance()
+    
+    for i = 1, count do
+        local gravCmp = gravCmpList[i]
+        local lifeCmp = lifeCmpList[i]
+        local transCmp = transCmpList[i]
+        local entity = gravCmp:getEntity_const()
+        
+        -- Calculate gameDt for this entity
+        local gameDt = tm:getDeltaTime(deltaTime, entity)
+        
+        if entity:isEnable_const() then
+             -- Update LifeTime (Game Time)
+             lifeCmp:addElapsedTime(gameDt)
+             
+             local isExpired = lifeCmp:isExpired_const()
+             
+             if isExpired then
+                 entity:setEnable(false)
+                 entity:setVisible(false)
+                 
+                 if lifeCmp:getElapsedTime_const() > lifeCmp:getMaxDuration_const() + 15.0 then
+                     entity:markForDeletion()
+                 end
+             else
+                 self:applyAttraction(transCmp, gravCmp, gameDt)
+             end
+        end
+    end
 end
 
 function BlackHoleSys:setPhysicSys(physicSys)
@@ -49,75 +114,23 @@ function BlackHoleSys:processUserInput(userInteractController)
         key_t = require('UserInteractDesc').InteractConsumeInfo:new(_keyPressedCheckFunc)
     }
     
-    if userInteractController:tryToConsumeInteractInfo(consumeList) then
+    if userInteractController:tryToConsumeInteractInfo(consumeList) and self._inputCooldown <= 0 then
         self._spawnRequested = true
+        self._inputCooldown = self._spawnCooldown
     end
-end
-
-function BlackHoleSys:tick(deltaTime)
-    MOD_BaseSystem.tick(self, deltaTime)
     
-    local TimeManager = require('TimeManager').TimeManager.static.getInstance()
-    local scale = TimeManager:getTimeScale()
-    local gameDt = deltaTime * scale
-
-    -- 1. Input Processing
     if self._inputCooldown > 0 then
-        self._inputCooldown = self._inputCooldown - deltaTime
-    else
-        if self._spawnRequested then
-             self:spawnBlackHole()
-             self._inputCooldown = self._spawnCooldown
-        end
-    end
-    
-    -- Reset spawn request to prevent buffering during cooldown
-    self._spawnRequested = false
-    
-    local gravCmpList = self._collectedComponents['GravitationalFieldCMP']
-    local lifeCmpList = self._collectedComponents['LifeTimeCMP']
-    local transCmpList = self._collectedComponents['TransformCMP']
-    
-    if not gravCmpList then return end
-    
-    for i = 1, #gravCmpList do
-        local gravCmp = gravCmpList[i]
-        local lifeCmp = lifeCmpList[i]
-        local transCmp = transCmpList[i]
-        local entity = gravCmp:getEntity()
-        
-        -- Update LifeTime (Game Time)
-        lifeCmp:addElapsedTime(gameDt)
-        
-        local isExpired = lifeCmp:isExpired_const()
-        -- local debugCmp = entity:getComponent('DebugColorCircleCMP') -- Unused
-        
-        if isExpired then
-             -- Hide entity instead of destroying it
-             -- This allows TimeRewind to bring it back "from the dead"
-             entity:setEnable(false)
-             entity:setVisible(false)
-             
-             -- Check if it should be REALLY destroyed (e.g. expired for long time)
-             -- Use 15s buffer (10s max rewind + 5s safety)
-             if lifeCmp:getElapsedTime_const() > lifeCmp:getMaxDuration_const() + 15.0 then
-                 entity:markForDeletion()
-             end
-        else
-             -- Alive logic is handled by TimeRewind restoring states
-             -- Just ensure normal updates
-             if entity:isEnable_const() then
-                 self:applyAttraction(transCmp, gravCmp, gameDt)
-             end
-        end
+        self._inputCooldown = self._inputCooldown - love.timer.getDelta() -- Use real time for input CD?
     end
 end
 
+-- Removed duplicate tick
 
 function BlackHoleSys:spawnBlackHole()
-    if not self._mainCharacter then return end
+    local mainCharacter = self._world:getMainCharacter()
+    if not mainCharacter then return end
     
-    local transCmp = self._mainCharacter:getComponent('TransformCMP')
+    local transCmp = mainCharacter:getComponent('TransformCMP')
     if not transCmp then return end
     
     local x, y = transCmp:getTranslate_const()
@@ -127,21 +140,16 @@ function BlackHoleSys:spawnBlackHole()
     local MOD_Entity = require('Entity')
     local bhEntity = MOD_Entity:new('BlackHole')
     
-    local TransformCMP = require('Component.TransformCMP').TransformCMP
-    local GravitationalFieldCMP = require('Component.Gameplay.GravitationalFieldCMP').GravitationalFieldCMP
-    local LifeTimeCMP = require('Component.Gameplay.LifeTimeCMP').LifeTimeCMP
-    local DebugColorCircleCMP = require('Component.DrawableComponents.DebugColorCircleCMP').DebugColorCircleCMP
-    
     local bhTransCmp = TransformCMP:new()
     bhTransCmp:setPosition(spawnX, spawnY)
     bhEntity:boundComponent(bhTransCmp)
     
     local gravLimitCmp = GravitationalFieldCMP:new(Config.BlackHole.Radius, Config.BlackHole.ForceStrength, Config.BlackHole.MinRadius)
-    gravLimitCmp:addIgnoreEntity(self._mainCharacter)
+    gravLimitCmp:addIgnoreEntity(mainCharacter)
     bhEntity:boundComponent(gravLimitCmp)
     bhEntity:boundComponent(LifeTimeCMP:new(Config.BlackHole.Duration))
     -- 使用半透明黑色表示黑洞
-    bhEntity:boundComponent(DebugColorCircleCMP:new(Config.BlackHole.DebugColor, Config.BlackHole.Radius))
+    bhEntity:boundComponent(require('Component.DrawableComponents.DebugColorCircleCMP').DebugColorCircleCMP:new(Config.BlackHole.DebugColor, Config.BlackHole.Radius))
     
     bhEntity:setNeedRewind(true)
     bhEntity:setEnable(true)
@@ -151,20 +159,20 @@ function BlackHoleSys:spawnBlackHole()
 end
 
 function BlackHoleSys:applyAttraction(bhTrans, gravCmp, dt)
-    if not self._physicSys then return end
-    -- Query physics entities
-    local physCmps = self._physicSys._collectedComponents['PhysicCMP']
-    if not physCmps then return end
+    local physics = self._physicsView._components[PhysicCMP.ComponentTypeID]
+    local pCount = self._physicsView._count
+    
+    if not physics or pCount == 0 then return end
     
     local bhX, bhY = bhTrans:getTranslate_const()
     local radius = gravCmp:getRadius_const()
-    local forceStr = gravCmp:getForceStrength_const()
-    local minRadius = gravCmp:getMinRadius_const()
     local radiusSq = radius * radius
+    local minRadius = gravCmp:getMinRadius_const()
+    local forceStr = gravCmp:getForceStrength_const()
     
-    for i = 1, #physCmps do
-        local pCmp = physCmps[i]
-        local targetEntity = pCmp:getEntity()
+    for i = 1, pCount do
+        local pCmp = physics[i]
+        local targetEntity = pCmp:getEntity_const()
         
         -- Skip self, ignored entities, and static bodies
         if pCmp and pCmp:getBodyType_const() == 'dynamic' and targetEntity and not gravCmp:isIgnored_const(targetEntity) then
@@ -176,12 +184,7 @@ function BlackHoleSys:applyAttraction(bhTrans, gravCmp, dt)
              
              if distSq < radiusSq then
                  local dist = math.sqrt(distSq)
-                 
                  local effectiveDist = math.max(dist, minRadius)
-                 
-                 -- Use Force to counteract velocity (Simulated Damping)
-                 -- F = -v * m * damping
-                 -- This is stateless and won't dirty the body's actual setDamping property
                  
                  local vx, vy = pCmp:getLinearVelocity_const()
                  local mass = pCmp:getMass_const()

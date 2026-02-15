@@ -129,12 +129,16 @@ Script/
 3.  **Lifecycle & Time Rewind**:
     -   Implement `World:addEntity`/`removeEntity` recursive logic (Add to Pending lists).
     -   Implement `World:clean()`: Process Pending Adds/Removes AND Dirty Archetypes.
+    -   Implement `World:getActiveEntityList()`: Return a cached list of non-destroyed entities for the current frame (optimized for Systems like TimeRewind that iterate all). Logic involves iterating all entities and checking `not entity:isDestroyed()`, returning a flat integer-indexed table.
     -   Implement "Pending Destruction" queue and GC tick.
+    -   Implement `World:recordCollisionEvent(event)`, `World:getCollisionEvents()`, and `World:clearCollisionEvents()` for transient frame-based event handling.
     -   Update `TimeRewindSys` to manipulate Entity ref counts.
 
 4.  **Main Loop Refactor**:
     -   Update `main.lua` to delegate flow to `World`.
     -   Update `LevelManager` to use `World` for entity management.
+    -   Implement `World` accessors for `mainCharacter` and `mainCamera`.
+    -   Remove global `mainCharacterEntity` and `mainCameraEntity` variables, using `World:getMainCharacter()` instead.
 
 5.  **Verification**:
     -   Verify standard gameplay (no regressions).

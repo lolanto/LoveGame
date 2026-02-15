@@ -10,6 +10,8 @@
 --]]
 
 local MOD_BaseSystem = require('BaseSystem').BaseSystem
+local CameraCMP = require('Component.CameraCMP').CameraCMP
+local TransformCMP = require('Component.TransformCMP').TransformCMP
 
 --- 该模块负责根据镜头组件，设置当前的渲染配置
 ---@class CameraSetupSys : BaseSystem
@@ -18,109 +20,100 @@ CameraSetupSys.__index = CameraSetupSys
 CameraSetupSys.SystemTypeName = "CameraSetupSys"
 
 
-function CameraSetupSys:new()
-    local instance = setmetatable(MOD_BaseSystem.new(self, CameraSetupSys.SystemTypeName), self)
+function CameraSetupSys:new(world)
+    local instance = setmetatable(MOD_BaseSystem.new(self, CameraSetupSys.SystemTypeName, world), self)
     local ComponentRequirementDesc = require('BaseSystem').ComponentRequirementDesc
-    instance:addComponentRequirement(require('Component.CameraCMP').CameraCMP.ComponentTypeID, ComponentRequirementDesc:new(true, true))
-    instance:addComponentRequirement(require('Component.TransformCMP').TransformCMP.ComponentTypeID, ComponentRequirementDesc:new(true, true))
+    instance:addComponentRequirement(CameraCMP.ComponentTypeID, ComponentRequirementDesc:new(true, true))
+    instance:addComponentRequirement(TransformCMP.ComponentTypeID, ComponentRequirementDesc:new(true, true))
+    instance:initView()
     return instance
 end
 
 
 --- 从Entity身上搜集CameraCMP和TransformCMP组件
 --- 理论上只会收集一个摄像机组件
----@param entity Entity 目标Entity，将会从这个entity身上搜集组件
----@return nil
-function CameraSetupSys:collect(entity)
-    if not entity:isEnable_const() then
-        return
-    end
-
-    local lenOfCameraCmps = #self._collectedComponents['CameraCMP']
-    local lenOfTransformCmps = #self._collectedComponents['TransformCMP']
-    assert(lenOfCameraCmps == lenOfTransformCmps, string.format("The count of CameraCMP %d should be equal to the count of TransformCMP %d", lenOfCameraCmps, lenOfTransformCmps))
-    -- 当且仅当lenOfCameraCmps ~= 1时，尝试从entity搜索组件
-    while lenOfCameraCmps ~= 1 do
-        local ignoreThisEntity = false
-        local cameraCmp = nil
-        local transformCmp = nil
-        -- 搜索CameraCMP和TransformCMP
-        if ignoreThisEntity == false then
-            cameraCmp = entity:getComponent('CameraCMP')
-            if cameraCmp == nil then
-                ignoreThisEntity = true
-            end
-        end
-        if ignoreThisEntity == false then
-            transformCmp = entity:getComponent('TransformCMP')
-            if transformCmp == nil then
-                ignoreThisEntity = true
-            end
-        end
-        if ignoreThisEntity then
-            goto continue
-        end
-
-        -- 通过检查，收集组件
-        table.insert(self._collectedComponents['CameraCMP'], cameraCmp)
-        table.insert(self._collectedComponents['TransformCMP'], transformCmp)
-        -- 更新计数
-        lenOfCameraCmps = #self._collectedComponents['CameraCMP']
-        lenOfTransformCmps = #self._collectedComponents['TransformCMP']
-        
-        ::continue::
-    end
-end
-
---- 设置摄像机实体
---- 这个方法会调用collect方法从entity身上收集组件
---- 假如明确哪个entity是摄像机，可以直接调用这个方法以跳过
-function CameraSetupSys:setupCameraEntity(entity)
-    assert(entity ~= nil, "The entity to setup should not be nil!")
-    self:collect(entity)
-end
-
---- tick
---- 根据Camera Entity的Transform组件以及摄像机组件，计算一个完整的摄像机变换矩阵
---- 并通过love.graphics.replaceTransform应用这个变换矩阵
----@param deltaTime number 距离上一帧的时间间隔，单位秒
+---@param deltaTime number
 function CameraSetupSys:tick(deltaTime)
     MOD_BaseSystem.tick(self, deltaTime)
-    if #self._collectedComponents['CameraCMP'] == 1 then
-        local renderEnvObj = require('RenderEnv').RenderEnv.getGlobalInstance()
-        ---@type CameraCMP
-        local cameraCmp = self._collectedComponents['CameraCMP'][1]
-        ---@type TransformCMP
-        local transformCmp = self._collectedComponents['TransformCMP'][1]
 
-        renderEnvObj:setViewWidth(cameraCmp:getViewWidthMeters_const())
+    -- 使用ComponentsView获取所有Camera
+    local view = self:getComponentsView()
+    local cameras = view._components[CameraCMP.ComponentTypeID]
+    local transforms = view._components[TransformCMP.ComponentTypeID]
 
-        local camProjTransform = cameraCmp:getProjectionTransform()
-        --- 计算一个完整的摄像机变换矩阵
-        local camWorldTransform = transformCmp:getWorldTransform_const()
-        --- 将completeCamTransform拆分出来，将里面的旋转部分的变量替换为摄像机组件内的旋转变量
-        --- 从世界变换矩阵中分解出位置、旋转、缩放属性
-        local f_mat1_1, f_mat1_2, f_mat1_3, f_mat1_4
-                , f_mat2_1, f_mat2_2, f_mat2_3, f_mat2_4
-                , f_mat3_1, f_mat3_2, f_mat3_3, f_mat3_4
-                , f_mat4_1, f_mat4_2, f_mat4_3, f_mat4_4 = camWorldTransform:getMatrix()
-        local _worldPosX = f_mat1_4
-        local _worldPosY = f_mat2_4
-        local _worldScaleX = math.sqrt(f_mat1_1 * f_mat1_1 + f_mat2_1 * f_mat2_1)
-        local _worldScaleY = math.sqrt(f_mat1_2 * f_mat1_2 + f_mat2_2 * f_mat2_2)
-        local _worldRotate = math.atan2(f_mat2_1, f_mat1_1)
-        --- 重新计算完整的摄像机变换矩阵，将旋转部分替换为摄像机组件内的旋转变量
-        camWorldTransform:setMatrix(
-            _worldScaleX, 0, 0, _worldPosX,
-            0,  _worldScaleY, 0, _worldPosY,
-            0,                                 0,                                1, 0,
-            0,                                 0,                                0, 1
-        )
-        local completeCamTransform = camWorldTransform:inverse()
-        completeCamTransform = camProjTransform:apply(completeCamTransform)
-        renderEnvObj:setCameraProj(completeCamTransform)
+    if not cameras or not transforms then return end
+    
+    local count = view._count
+    if count == 0 then return end
+
+    -- 策略：使用第一个有效的Camera (First Active)
+    for i = 1, count do
+        local cameraCmp = cameras[i]
+        local transformCmp = transforms[i]
+        local entity = cameraCmp:getEntity_const()
+
+        -- Check if enabled
+        if entity and entity:isEnable_const() then
+            self:updateCameraInfo(cameraCmp, transformCmp)
+            return -- Stop after processing one
+        end
     end
 end
+
+function CameraSetupSys:updateCameraInfo(cameraCmp, transformCmp)
+    local renderEnvObj = require('RenderEnv').RenderEnv.getGlobalInstance()
+    renderEnvObj:setViewWidth(cameraCmp:getViewWidthMeters_const())
+
+    local camProjTransform = cameraCmp:getProjectionTransform()
+    --- 计算一个完整的摄像机变换矩阵
+    local camWorldTransform = transformCmp:getWorldTransform_const()
+    
+    -- NOTE: Creating a new transform or modifying existing one? 
+    -- camWorldTransform is ReadOnly? .getMatrix() returns values.
+    -- But logic below calls camWorldTransform:setMatrix()!
+    -- If getMatrix returns values, then setMatrix on what object?
+    -- camWorldTransform from getWorldTransform_const() might be a ReadOnly proxy which errors on setMatrix?
+    -- Let's check TransformCMP.getWorldTransform_const().
+    
+    -- Optimization: Make a copy or use a temp transform to avoid modifying entity transform if implied.
+    -- Actually the original code did:
+    -- local camWorldTransform = transformCmp:getWorldTransform_const()
+    -- camWorldTransform:setMatrix(...) 
+    -- This implies camWorldTransform is NOT read-only or the user didn't use ReadOnly wrapper properly there, 
+    -- OR `getWorldTransform_const` returns a new object/clone?
+    -- If it returns internal object and we modify it, we mess up the entity transform!
+    
+    -- Let's replicate original logic but be careful.
+    -- Warning: modifying world transform of entity to use 0 rotation for camera calculation?
+    -- Logic: "将completeCamTransform拆分出来，将里面的旋转部分的变量替换为摄像机组件内的旋转变量" -> "Reconstruct camera matrix replacing rotation"
+    
+    -- Clone to be safe:
+    local f_mat1_1, f_mat1_2, f_mat1_3, f_mat1_4
+        , f_mat2_1, f_mat2_2, f_mat2_3, f_mat2_4
+        , f_mat3_1, f_mat3_2, f_mat3_3, f_mat3_4
+        , f_mat4_1, f_mat4_2, f_mat4_3, f_mat4_4 = camWorldTransform:getMatrix()
+        
+    local _worldPosX = f_mat1_4
+    local _worldPosY = f_mat2_4
+    local _worldScaleX = math.sqrt(f_mat1_1 * f_mat1_1 + f_mat2_1 * f_mat2_1)
+    local _worldScaleY = math.sqrt(f_mat1_2 * f_mat1_2 + f_mat2_2 * f_mat2_2)
+    -- local _worldRotate = math.atan2(f_mat2_1, f_mat1_1) -- Unused in reconstruction below?
+
+    -- Create a new transform for calculation (Love2D Transform)
+    local tempTransform = love.math.newTransform()
+    tempTransform:setMatrix(
+        _worldScaleX, 0, 0, _worldPosX,
+        0,  _worldScaleY, 0, _worldPosY,
+        0, 0, 1, 0,
+        0, 0, 0, 1
+    )
+    
+    local completeCamTransform = tempTransform:inverse()
+    completeCamTransform = camProjTransform:apply(completeCamTransform)
+    renderEnvObj:setCameraProj(completeCamTransform)
+end
+
+
 
 return {
     CameraSetupSys = CameraSetupSys,

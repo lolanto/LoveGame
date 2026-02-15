@@ -1,5 +1,8 @@
 local MOD_BaseSystem = require('BaseSystem').BaseSystem
 local PatrolType = require('Component.Gameplay.PatrolCMP').PatrolType
+local PatrolCMP = require('Component.Gameplay.PatrolCMP').PatrolCMP
+local MovementCMP = require('Component.MovementCMP').MovementCMP
+local TransformCMP = require('Component.TransformCMP').TransformCMP
 
 --- 巡逻系统，处理各种巡逻行为
 ---@class PatrolSys : BaseSystem
@@ -7,12 +10,13 @@ local PatrolSys = setmetatable({}, MOD_BaseSystem)
 PatrolSys.__index = PatrolSys
 PatrolSys.SystemTypeName = "PatrolSys"
 
-function PatrolSys:new()
-    local instance = setmetatable(MOD_BaseSystem.new(self, PatrolSys.SystemTypeName), self)
+function PatrolSys:new(world)
+    local instance = setmetatable(MOD_BaseSystem.new(self, PatrolSys.SystemTypeName, world), self)
     local ComponentRequirementDesc = require('BaseSystem').ComponentRequirementDesc
-    instance:addComponentRequirement(require('Component.Gameplay.PatrolCMP').PatrolCMP.ComponentTypeID, ComponentRequirementDesc:new(true, false))
-    instance:addComponentRequirement(require('Component.MovementCMP').MovementCMP.ComponentTypeID, ComponentRequirementDesc:new(true, false))
-    instance:addComponentRequirement(require('Component.TransformCMP').TransformCMP.ComponentTypeID, ComponentRequirementDesc:new(true, true))
+    instance:addComponentRequirement(PatrolCMP.ComponentTypeID, ComponentRequirementDesc:new(true, false))
+    instance:addComponentRequirement(MovementCMP.ComponentTypeID, ComponentRequirementDesc:new(true, false))
+    instance:addComponentRequirement(TransformCMP.ComponentTypeID, ComponentRequirementDesc:new(true, true))
+    instance:initView()
     return instance
 end
 
@@ -21,13 +25,22 @@ end
 ---@return nil
 function PatrolSys:tick(deltaTime)
     MOD_BaseSystem.tick(self, deltaTime)
-    for i = 1, #self._collectedComponents['PatrolCMP'] do
+    
+    local view = self:getComponentsView()
+    local patrols = view._components[PatrolCMP.ComponentTypeID]
+    local movements = view._components[MovementCMP.ComponentTypeID]
+    local transforms = view._components[TransformCMP.ComponentTypeID]
+    
+    if not patrols or not movements or not transforms then return end
+    local count = view._count
+    
+    for i = 1, count do
         ---@type PatrolCMP
-        local patrolCmp = self._collectedComponents['PatrolCMP'][i]
+        local patrolCmp = patrols[i]
         ---@type MovementCMP
-        local movementCmp = self._collectedComponents['MovementCMP'][i]
+        local movementCmp = movements[i]
         ---@type TransformCMP
-        local transformCmp = self._collectedComponents['TransformCMP'][i]
+        local transformCmp = transforms[i]
 
         if patrolCmp.enabled then
             self:executePatrol(patrolCmp, movementCmp, transformCmp, deltaTime)

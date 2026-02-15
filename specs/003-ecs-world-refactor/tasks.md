@@ -31,27 +31,33 @@
 
 **Goal**: Update `BaseSystem` to use Views and refactor existing systems to register with World.
 
-- [ ] T010 Update `Script/BaseSystem.lua` to accept `World` in constructor, call `World:getComponentsView(self._requiredComponentInfos)`, and store the result in `self._componentsView` [Script/BaseSystem.lua](Script/BaseSystem.lua)
-- [ ] T011 Remove dynamic `BaseSystem:getComponentsView` wrapper (now a member variable) and ensure `BaseSystem:addComponentRequirement` is only used before initialization (or throws error if called after View creation) [Script/BaseSystem.lua](Script/BaseSystem.lua)
-- [ ] T012 Implement `World:registerSystem(system)` and `World:unregisterSystem(system)` [Script/World.lua](Script/World.lua)
-- [ ] T013 Refactor `Script/System/TransformUpdateSys.lua` to use `World` and `ComponentsView` [Script/System/TransformUpdateSys.lua](Script/System/TransformUpdateSys.lua)
-- [ ] T014 Refactor `Script/System/DisplaySys.lua` to use `World` and `ComponentsView` [Script/System/DisplaySys.lua](Script/System/DisplaySys.lua)
-- [ ] T015 Refactor `Script/System/EntityMovementSys.lua` to use `World` and `ComponentsView` [Script/System/EntityMovementSys.lua](Script/System/EntityMovementSys.lua)
-- [ ] T016 Refactor `Script/System/PhysicSys.lua` to use `World` and `ComponentsView` [Script/System/PhysicSys.lua](Script/System/PhysicSys.lua)
-- [ ] T017 [P] Refactor `Script/System/CameraSetupSys.lua` to use `World` and `ComponentsView` [Script/System/CameraSetupSys.lua](Script/System/CameraSetupSys.lua)
-- [ ] T018 [P] Refactor `Script/System/MainCharacterInteractSys.lua` to use `World` and `ComponentsView` [Script/System/MainCharacterInteractSys.lua](Script/System/MainCharacterInteractSys.lua)
-- [ ] T019 [P] Refactor `Script/System/Gameplay/BlackHoleSys.lua` to use `World` and `ComponentsView` [Script/System/Gameplay/BlackHoleSys.lua](Script/System/Gameplay/BlackHoleSys.lua)
-- [ ] T020 [P] Refactor `Script/System/Gameplay/PatrolSys.lua` to use `World` and `ComponentsView` [Script/System/Gameplay/PatrolSys.lua](Script/System/Gameplay/PatrolSys.lua)
-- [ ] T021 [P] Refactor `Script/System/Gameplay/TriggerSys.lua` to use `World` and `ComponentsView` [Script/System/Gameplay/TriggerSys.lua](Script/System/Gameplay/TriggerSys.lua)
-- [ ] T022 [P] Refactor `Script/System/Gameplay/TimeDilationSys.lua` to use `World` and `ComponentsView` [Script/System/Gameplay/TimeDilationSys.lua](Script/System/Gameplay/TimeDilationSys.lua)
+- [x] T010 Update `Script/BaseSystem.lua` to accept `World` in constructor, call `World:getComponentsView(self._requiredComponentInfos)`, and store the result in `self._componentsView` [Script/BaseSystem.lua](Script/BaseSystem.lua)
+- [x] T011 Remove dynamic `BaseSystem:getComponentsView` wrapper (now a member variable) and ensure `BaseSystem:addComponentRequirement` is only used before initialization (or throws error if called after View creation) [Script/BaseSystem.lua](Script/BaseSystem.lua)
+- [x] T012 Implement `World:registerSystem(system)` and `World:unregisterSystem(system)` [Script/World.lua](Script/World.lua)
+- [x] T013 Refactor `Script/System/TransformUpdateSys.lua` to use `World` and `ComponentsView` [Script/System/TransformUpdateSys.lua](Script/System/TransformUpdateSys.lua)
+- [x] T014 Refactor `Script/System/DisplaySys.lua` to use `World` and `ComponentsView` [Script/System/DisplaySys.lua](Script/System/DisplaySys.lua)
+- [x] T015 Refactor `Script/System/EntityMovementSys.lua` to use `World` and `ComponentsView` [Script/System/EntityMovementSys.lua](Script/System/EntityMovementSys.lua)
+- [x] T016 Refactor `Script/System/PhysicSys.lua` to use `World` and `ComponentsView` [Script/System/PhysicSys.lua](Script/System/PhysicSys.lua)
+- [x] T017 [P] Refactor `Script/System/CameraSetupSys.lua` to use `World` and `ComponentsView` [Script/System/CameraSetupSys.lua](Script/System/CameraSetupSys.lua)
+- [x] T018 [P] Refactor `Script/System/MainCharacterInteractSys.lua` to use `World` and `ComponentsView` [Script/System/MainCharacterInteractSys.lua](Script/System/MainCharacterInteractSys.lua)
+- [x] T019 [P] Refactor `Script/System/Gameplay/BlackHoleSys.lua` to use `World` and `ComponentsView` [Script/System/Gameplay/BlackHoleSys.lua](Script/System/Gameplay/BlackHoleSys.lua)
+- [x] T020 [P] Refactor `Script/System/Gameplay/PatrolSys.lua` to use `World` and `ComponentsView` [Script/System/Gameplay/PatrolSys.lua](Script/System/Gameplay/PatrolSys.lua)
+- [x] T021 [P] Refactor `Script/System/Gameplay/TriggerSys.lua` to use `World` and `ComponentsView` [Script/System/Gameplay/TriggerSys.lua](Script/System/Gameplay/TriggerSys.lua)
+- [x] T022 [P] Refactor `Script/System/Gameplay/TimeDilationSys.lua` to use `World` and `ComponentsView` [Script/System/Gameplay/TimeDilationSys.lua](Script/System/Gameplay/TimeDilationSys.lua)
+- [x] T034 Implement `World:getMainCharacter()/setMainCharacter()` and `World:getMainCamera()/setMainCamera()` [Script/World.lua](Script/World.lua)
+- [x] T035 Update `Script/main.lua` and Systems (`BlackHoleSys`, `LevelManager`) to use `World` special entity accessors instead of globals [Script/main.lua](Script/main.lua)
 
 ## Phase 3: Lifecycle & Time Rewind
 
-**Goal**: Implement the complex addition/removal logic, Deferred Updates, and "Zombie" state for Time Rewind.
+**Goal**: Implement the complex addition/removal logic, Deferred Updates, Collision Events, and "Zombie" state for Time Rewind.
 
 - [ ] T023 Implement `World:addEntity(entity)` with recursion for children and adding to `pendingAdds` list [Script/World.lua](Script/World.lua)
 - [ ] T024 Implement `World:removeEntity(entity)` logic: recursive "Pending Destruction" marking and `componentsView` removal [Script/World.lua](Script/World.lua)
 - [ ] T025 Implement `World:clean()` phase: Flush `pendingAdds` (add to Views), flush `pendingRemoves` (mark/remove from Views), and clear `dirtyEntities` [Script/World.lua](Script/World.lua)
+- [ ] T036 Implement `World:getActiveEntityList()` to return cached flat list of non-destroyed entities [Script/World.lua](Script/World.lua)
+- [ ] T037 Implement `World:recordCollisionEvent(event)`, `World:getCollisionEvents()`, and `World:clearCollisionEvents()` [Script/World.lua](Script/World.lua)
+- [ ] T038 Update `Script/System/PhysicSys.lua` to push collision events to `World` instead of internal table [Script/System/PhysicSys.lua](Script/System/PhysicSys.lua)
+- [ ] T039 Update `Script/System/Gameplay/TriggerSys.lua` to pull collision events from `World` and remove direct dependency on `PhysicSys` [Script/System/Gameplay/TriggerSys.lua](Script/System/Gameplay/TriggerSys.lua)
 - [ ] T026 Implement **Zombie State** logic in `World`: If removed but `refCount > 0`, keep in implementation memory but remove from all Views [Script/World.lua](Script/World.lua)
 - [ ] T027 Implement `World` Garbage Collection tick: destroy entities in Pending Destruction list only if `refCount == 0` [Script/World.lua](Script/World.lua)
 - [ ] T028 Refactor `Script/System/Gameplay/TimeRewindSys.lua` to call `entity:retain()` on snapshot record and `entity:release()` on discard [Script/System/Gameplay/TimeRewindSys.lua](Script/System/Gameplay/TimeRewindSys.lua)

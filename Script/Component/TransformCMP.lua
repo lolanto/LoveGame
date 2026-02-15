@@ -35,7 +35,7 @@ local MOD_Config = require('Config').Config
 ---@field _worldScaleX number
 ---@field _worldTransform nil|love.Transform
 ---@field _cacheID number 用于标记变换缓存是否有效，可以通过遍历整个TransformCMP树来判断
-local TransformCMP = setmetatable({}, {__index = MOD_BaseComponent})
+local TransformCMP = setmetatable({}, MOD_BaseComponent)
 TransformCMP.__index = TransformCMP
 TransformCMP.ComponentTypeName = "TransformCMP"
 TransformCMP.ComponentTypeID = MOD_BaseComponent.RegisterType(TransformCMP.ComponentTypeName)

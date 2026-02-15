@@ -104,7 +104,7 @@ function LevelManager:_resolveComponent(className)
 end
 
 -- T005: Instantiate component with dependency injection
-function LevelManager:_instantiateComponent(compData, systems)
+function LevelManager:_instantiateComponent(compData)
     local Class = self:_resolveComponent(compData.type)
     if not Class then return nil end
     
@@ -113,7 +113,13 @@ function LevelManager:_instantiateComponent(compData, systems)
     -- Factory Logic
     if compData.type == 'PhysicCMP' then
         -- Dependency Injection: PhysicWorld
-        local world = systems['PhysicSys']:getWorld()
+        local world = require('Script.World').getInstance()
+        local physicsSys = world:getSystem('PhysicSys')
+        if not physicsSys then
+            MUtils.Error(LOG_MODULE, "PhysicSys not found during component instantiation")
+            return nil 
+        end
+        local physicsWorld = physicsSys:getWorld()
         
         -- Need to convert pure data shape to Shape object
         -- We assume the PhysicCMP.Shape class is available via require('Component.PhysicCMP').Shape
@@ -205,7 +211,7 @@ function LevelManager:_applyComponentProperties(component, props, actions)
 end
 
 -- T007: Build Entity Recursively
-function LevelManager:_buildEntity(entityData, parent, systems, actions)
+function LevelManager:_buildEntity(entityData, parent, actions)
     local MOD_Entity = require('Entity')
     local entity = MOD_Entity:new(entityData.name)
     
@@ -232,7 +238,7 @@ function LevelManager:_buildEntity(entityData, parent, systems, actions)
     
     if entityData.components then
         for _, compData in ipairs(entityData.components) do
-            local component = self:_instantiateComponent(compData, systems)
+            local component = self:_instantiateComponent(compData)
             if component then
                 -- Step 1: Bind Component First (Fixes TransformCMP dependency issue)
                 entity:boundComponent(component)
@@ -248,14 +254,14 @@ function LevelManager:_buildEntity(entityData, parent, systems, actions)
     
     if entityData.children then
         for _, childData in ipairs(entityData.children) do
-            self:_buildEntity(childData, entity, systems, actions)
+            self:_buildEntity(childData, entity, actions)
         end
     end
     
     return entity
 end
 
-function LevelManager:_loadLevelFromData(dataPath, systems, levelInstance)
+function LevelManager:_loadLevelFromData(dataPath, levelInstance)
     local data = self:_loadDataFile(dataPath)
     if not data then return {} end
     
@@ -279,14 +285,27 @@ function LevelManager:_loadLevelFromData(dataPath, systems, levelInstance)
     end
     
     if data.entities then
+        local world = require('Script.World').getInstance()
         for _, entityDesc in ipairs(data.entities) do
-             local entity = self:_buildEntity(entityDesc, nil, systems, actions)
+             -- Recursive world add?
+             local function addToWorld(e)
+                 world:addEntity(e)
+                 local children = e:getChildren()
+                 if children then
+                    for _, child in ipairs(children) do
+                        addToWorld(child)
+                    end
+                 end
+             end
+
+             local entity = self:_buildEntity(entityDesc, nil, actions)
              table.insert(entities, entity)
              
              -- Track in level instance for unloading
              if levelInstance and levelInstance.addEntity then
                  levelInstance:addEntity(entity)
              end
+             addToWorld(entity)
         end
     end
     
@@ -332,22 +351,23 @@ function LevelManager:requestLoadLevel(levelIdentifier)
             self._actions = actions 
         end
         
-        function VirtualLevel:load(systems)
-            return LevelManager.static.getInstance():_loadLevelFromData(dataPath, systems, self)
+        function VirtualLevel:load()
+            return LevelManager.static.getInstance():_loadLevelFromData(dataPath, self)
         end
         
-        function VirtualLevel:unload(entities, systems)
-            -- Copy from BaseLevel unload logic
+        function VirtualLevel:unload()
+            local world = require('Script.World').getInstance()
              local entitiesToRemove = {}
             for _, entity in ipairs(self._levelEntities) do
                 entity:onLeaveLevel()
-                entitiesToRemove[entity] = true
-            end
-            
-            for i = #entities, 1, -1 do
-                local entity = entities[i]
-                if entitiesToRemove[entity] then
-                    table.remove(entities, i)
+                world:removeEntity(entity)
+                
+                -- Check children
+                local children = entity:getChildren()
+                if children then
+                    for _, child in ipairs(children) do
+                        world:removeEntity(child)
+                    end
                 end
             end
             self._levelEntities = {}
@@ -372,7 +392,7 @@ end
 ---@param levelObj Level
 ---@param entities table
 ---@param systems table
-function LevelManager:loadLevel(levelObj, entities, systems)
+function LevelManager:loadLevel(levelObj)
     if levelObj == nil then
         MUtils.Error(LOG_MODULE, "Cannot load nil level!")
         return
@@ -381,7 +401,7 @@ function LevelManager:loadLevel(levelObj, entities, systems)
     -- Atomic Transition: Unload Current effectively immediately
     if self._currentLevel ~= nil then
         MUtils.Log(LOG_MODULE, "Unloading current level: " .. self._currentLevel:getName())
-        self._currentLevel:unload(entities, systems)
+        self._currentLevel:unload()
         MessageCenter.static.getInstance():broadcastImmediate(self, Event_LevelUnloaded, { level = self._currentLevel })
     end
     
@@ -391,7 +411,7 @@ function LevelManager:loadLevel(levelObj, entities, systems)
             local levelToUnload = self._unloadLevelsList[i]
             if levelToUnload ~= self._currentLevel then -- Avoid double unload if it was in list
                  MUtils.Log(LOG_MODULE, "Unloading queued level: " .. levelToUnload:getName())
-                 levelToUnload:unload(entities, systems)
+                 levelToUnload:unload()
                  MessageCenter.static.getInstance():broadcastImmediate(self, Event_LevelUnloaded, { level = levelToUnload })
             end
         end
@@ -402,25 +422,22 @@ function LevelManager:loadLevel(levelObj, entities, systems)
 
     MUtils.Log(LOG_MODULE, "Loading level: " .. levelObj.static.getName())
     self._currentLevel = levelObj:new()
-    local level_entities = self._currentLevel:load(systems)
-    for i = 1, #level_entities do
-        table.insert(entities, level_entities[i])
-    end
+    self._currentLevel:load() 
+    -- Entities are added to World within _loadLevelFromData/VirtualLevel:load
 
     MessageCenter.static.getInstance():broadcastImmediate(self, Event_LevelLoaded, { level = self._currentLevel })
 
 end
 
-function LevelManager:tick(entities, systems)
+function LevelManager:tick()
     if #self._pendingSpawnEntities > 0 then
-        if entities then
-            for i = 1, #self._pendingSpawnEntities do
-                local entity = self._pendingSpawnEntities[i]
-                table.insert(entities, entity)
-                if self._currentLevel and self._currentLevel.addEntity then
-                    self._currentLevel:addEntity(entity)
-                end
+        local world = require('Script.World').getInstance()
+        for i = 1, #self._pendingSpawnEntities do
+            local entity = self._pendingSpawnEntities[i]
+            if self._currentLevel and self._currentLevel.addEntity then
+                self._currentLevel:addEntity(entity)
             end
+            world:addEntity(entity)
         end
         self._pendingSpawnEntities = {}
     end
@@ -429,14 +446,14 @@ function LevelManager:tick(entities, systems)
         for i = 1, #self._unloadLevelsList do
             local levelToUnload = self._unloadLevelsList[i]
             MUtils.Log(LOG_MODULE, "Unloading level: " .. levelToUnload:getName())
-            levelToUnload:unload(entities, systems)
+            levelToUnload:unload()
             MessageCenter.static.getInstance():broadcastImmediate(self, Event_LevelUnloaded, { level = levelToUnload })
         end
         self._unloadLevelsList = {}
     end
     if self._nextLevelModule ~= nil then
         MUtils.Log(LOG_MODULE, "try to load level module.")
-        self:loadLevel(self._nextLevelModule, entities, systems)
+        self:loadLevel(self._nextLevelModule)
         self._nextLevelModule = nil
     end
 end

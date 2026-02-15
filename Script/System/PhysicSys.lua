@@ -1,21 +1,23 @@
 
 local MOD_BaseSystem = require('BaseSystem').BaseSystem
+local PhysicCMP = require('Component.PhysicCMP').PhysicCMP
+local TransformCMP = require('Component.TransformCMP').TransformCMP
 
 ---@class PhysicSys : BaseSystem
 local PhysicSys = setmetatable({}, MOD_BaseSystem)
 PhysicSys.__index = PhysicSys
 PhysicSys.SystemTypeName = "PhysicSys"
 
-function PhysicSys:new()
-    local instance = setmetatable(MOD_BaseSystem.new(self, PhysicSys.SystemTypeName), self)
+function PhysicSys:new(world)
+    local instance = setmetatable(MOD_BaseSystem.new(self, PhysicSys.SystemTypeName, world), self)
     local ComponentRequirementDesc = require('BaseSystem').ComponentRequirementDesc
-    instance:addComponentRequirement(require('Component.PhysicCMP').PhysicCMP.ComponentTypeID, ComponentRequirementDesc:new(true, false))
-    instance:addComponentRequirement(require('Component.TransformCMP').TransformCMP.ComponentTypeID, ComponentRequirementDesc:new(true, false))
-    instance._world = love.physics.newWorld(0, 9.8, false)  -- 创建一个物理世界，重力向下，单位为米/秒²
+    instance:addComponentRequirement(PhysicCMP.ComponentTypeID, ComponentRequirementDesc:new(true, false))
+    instance:addComponentRequirement(TransformCMP.ComponentTypeID, ComponentRequirementDesc:new(true, false))
+    instance._physicsWorld = love.physics.newWorld(0, 9.8, false)  -- 创建一个物理世界，重力向下，单位为米/秒²
     
     instance._collisionEvents = {}
 
-    instance._world:setCallbacks(
+    instance._physicsWorld:setCallbacks(
         function(a, b, coll)
             -- 碰撞开始回调
             local userDataA = a:getUserData()
@@ -42,6 +44,7 @@ function PhysicSys:new()
         nil,
         nil
     )
+    instance:initView()
     return instance
 
 end
@@ -51,8 +54,8 @@ function PhysicSys:getCollisionEvents()
     return self._collisionEvents
 end
 
-function PhysicSys:getWorld()
-    return self._world
+function PhysicSys:getPhysicsWorld()
+    return self._physicsWorld
 end
 
 function PhysicSys:tick(deltaTime)
@@ -60,38 +63,57 @@ function PhysicSys:tick(deltaTime)
 
     self._collisionEvents = {}
     
+    local view = self:getComponentsView()
+    local physics = view._components[PhysicCMP.ComponentTypeID]
+    local transforms = view._components[TransformCMP.ComponentTypeID]
+    
+    if not physics or not transforms then return end
+    local count = view._count
+    
+    local TimeManager = require('TimeManager').TimeManager.static.getInstance()
+    local scale = TimeManager:getTimeScale()
+    local physicsDt = deltaTime * scale
+    local worldGravityX, worldGravityY = self._physicsWorld:getGravity()
+
+    local exceptionComponents = {} 
+    
     -- 先对所有的物理组件进行必要的更新
-    for i = 1, #self._collectedComponents['PhysicCMP'] do
+    for i = 1, count do
         ---@type PhysicCMP
-        local physicCmp = self._collectedComponents['PhysicCMP'][i]
+        local physicCmp = physics[i]
         ---@type TransformCMP
-        local transformCmp = self._collectedComponents['TransformCMP'][i]
+        local transformCmp = transforms[i]
+        
         -- 从世界变换矩阵中分解出位置、旋转应用到物理组件上
         if physicCmp._body and transformCmp then
+            -- Note: Setting physics body position from transform forces physics to snap.
+            -- This contradicts later logic where physics updates transform.
+            -- Usually: Physics drives Transform (for dynamic).
+            -- Transform drives Physics (for kinematic/static or initialization).
+            -- If we do BOTH in every frame, who wins?
+            -- Code order:
+            -- 1. Transform -> Physics
+            -- 2. Physics World Step
+            -- 3. Physics -> Transform
+            -- This implies Transform set elsewhere (e.g. movement, animation) overrides Physics previous state,
+            -- then Physics simulates, then result is written back.
+            -- This seems to support "Kinematic" or "Controller" based movement overriding physics,
+            -- but for Dynamic bodies, this resets velocity/position effecitvely?
+            
+            -- Wait, if TransformUpdateSys ran before, it calculated WorldTransform.
+            -- Only update physics body if we need to sync?
+            -- Original code did exactly this. Preserving logic.
+            
             local x, y = transformCmp:getWorldPosition_const()
             local rotation = transformCmp:getWorldRotate_const()
             physicCmp:setBodyPosition(x, y)
             physicCmp:setBodyRotate(rotation)
-            -- TODO：Transform身上的Scale应该怎么反映到物理组件上呢？
         end
-    end
-
-    -- 更新物理世界
-    local TimeManager = require('TimeManager').TimeManager.static.getInstance()
-    local scale = TimeManager:getTimeScale()
-    local physicsDt = deltaTime * scale
-    local worldGravityX, worldGravityY = self._world:getGravity()
-
-    -- [TimeManager Support] 
-    -- 针对不受时间缩放影响的例外实体，我们需要进行补偿：
-    -- 1. 速度补偿：为了在较短的PhysicsDT内移动相同的逻辑距离，物理速度需要放大 (1/scale)
-    -- 2. 重力补偿：为了在较短的PhysicsDT内获得相同的重力加速度效果，需要施加额外的重力 F = m * g * (1/scale - 1)
-    local exceptionComponents = {} 
-    if math.abs(scale - 1.0) > 0.001 then
-        for i = 1, #self._collectedComponents['PhysicCMP'] do
-            local physicCmp = self._collectedComponents['PhysicCMP'][i]
-            local entity = physicCmp:getEntity()
-            if entity:isTimeScaleException_const() then
+        
+        -- [TimeManager Support] 
+        if math.abs(scale - 1.0) > 0.001 then
+            local entity = physicCmp:getEntity_const() -- Use const variant if available or just getEntity
+            if entity and entity:isTimeScaleException_const() then
                 local vx, vy = physicCmp:getLinearVelocity_const()
                 local angularVel = physicCmp:getAngularVelocity_const()
                 
@@ -113,11 +135,9 @@ function PhysicSys:tick(deltaTime)
         end
     end
 
-    self._world:update(physicsDt)
+    self._physicsWorld:update(physicsDt)
 
     -- [TimeManager Support] 还原速度
-    -- 物理模拟结束后，物体现在的物理速度是放大的，我们需要将其还原回逻辑速度
-    -- v_logical = v_phys * scale
     if #exceptionComponents > 0 then
         for _, physicCmp in ipairs(exceptionComponents) do
             local vx, vy = physicCmp:getLinearVelocity_const()
@@ -128,11 +148,11 @@ function PhysicSys:tick(deltaTime)
     end
 
     -- 然后将物理组件的位置和旋转反馈回变换组件
-    for i = 1, #self._collectedComponents['PhysicCMP'] do
+    for i = 1, count do
         ---@type PhysicCMP
-        local physicCmp = self._collectedComponents['PhysicCMP'][i]
+        local physicCmp = physics[i]
         ---@type TransformCMP
-        local transformCmp = self._collectedComponents['TransformCMP'][i]
+        local transformCmp = transforms[i]
         if physicCmp._body and transformCmp then
             -- assert(physicCmp:getBody():isAwake())
             local x, y = physicCmp:getBodyPosition_const()
@@ -153,10 +173,11 @@ local PhysicVisualizeSys = setmetatable({}, MOD_BaseSystem)
 PhysicVisualizeSys.__index = PhysicVisualizeSys
 PhysicVisualizeSys.SystemTypeName = "PhysicVisualizeSys"
 
-function PhysicVisualizeSys:new()
-    local instance = setmetatable(MOD_BaseSystem.new(self, PhysicVisualizeSys.SystemTypeName), self)
+function PhysicVisualizeSys:new(world)
+    local instance = setmetatable(MOD_BaseSystem.new(self, PhysicVisualizeSys.SystemTypeName, world), self)
     local ComponentRequirementDesc = require('BaseSystem').ComponentRequirementDesc
-    instance:addComponentRequirement(require('Component.PhysicCMP').PhysicCMP.ComponentTypeID, ComponentRequirementDesc:new(true, false))
+    instance:addComponentRequirement(PhysicCMP.ComponentTypeID, ComponentRequirementDesc:new(true, false))
+    instance:initView()
     return instance
 end
 
@@ -164,6 +185,12 @@ end
 function PhysicVisualizeSys:draw()
     local MOD_PhysicShape = require('Component.PhysicCMP').Shape
     MOD_BaseSystem.draw(self)
+    
+    local view = self:getComponentsView()
+    local physics = view._components[PhysicCMP.ComponentTypeID]
+    if not physics then return end
+    local count = view._count
+    
     local old_colors_r, old_colors_g, old_colors_b, old_colors_a = love.graphics.getColor()
 
     --- 内部函数：根据是否为静态物体更新颜色
@@ -175,9 +202,9 @@ function PhysicVisualizeSys:draw()
         end
     end
 
-    for i = 1, #self._collectedComponents['PhysicCMP'] do
+    for i = 1, count do
         ---@type PhysicCMP
-        local physicCmp = self._collectedComponents['PhysicCMP'][i]
+        local physicCmp = physics[i]
         if physicCmp:getShape_const() and physicCmp:getBody() then
             _local_update_color(physicCmp:isBodyStatic_const())
             local shapeType = physicCmp:getShape_const():getType_const()

@@ -7,10 +7,11 @@ local TimeDilationSys = setmetatable({}, MOD_BaseSystem)
 TimeDilationSys.__index = TimeDilationSys
 TimeDilationSys.SystemTypeName = "TimeDilationSys"
 
-function TimeDilationSys:new()
-    local instance = setmetatable(MOD_BaseSystem.new(self, TimeDilationSys.SystemTypeName), self)
+function TimeDilationSys:new(world)
+    local instance = setmetatable(MOD_BaseSystem.new(self, TimeDilationSys.SystemTypeName, world), self)
     instance._isDilationActive = false
     instance._timeRewindSys = nil
+    instance:initView() -- Even if empty, good practice
     return instance
 end
 

@@ -32,7 +32,19 @@ Refactor the current ECS system management to introduce a central `World` single
     -   All active Entities.
     -   All active Systems.
     -   The Render Environment (`renderEnv`).
-    -   Special global entities (e.g., `mainCharacterEntity`).
+    -   Special global entities (e.g., `mainCharacterEntity`, `mainCameraEntity`).
+-   **Special Entity Access**:
+    -   The `World` must provide specific accessors for key entities:
+        -   `World:getMainCharacter()`: Returns the current player entity or nil.
+        -   `World:setMainCharacter(entity)`: Sets the player entity.
+        -   `World:getMainCamera()`: Returns the main camera entity or nil.
+        -   `World:setMainCamera(entity)`: Sets the main camera entity.
+    -   These accessors ensure Systems can easily retrieve the player/camera without searching or maintaining their own references (removing globals like `mainCharacterEntity` in `main.lua`).
+-   **Collision Event Management**:
+    -   `World` maintains a `_collisionEvents` list.
+    -   Systems (e.g., `PhysicSys`) can report collisions via `World:recordCollisionEvent(event)`.
+    -   Systems (e.g., `TriggerSys`) can access these via `World:getCollisionEvents()`.
+    -   The list is cleared at the start of each frame (or end of logic update) to ensure events are transient per frame.
 
 ### 2. Entity Management
 -   **Add Entity**:

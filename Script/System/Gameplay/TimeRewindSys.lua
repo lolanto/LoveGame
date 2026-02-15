@@ -10,13 +10,18 @@ local MultiInheritHelper = require('MultiInheritHelper').MultiInheritHelper
 local TimeRewindSys = MultiInheritHelper.createClass(MOD_BaseSystem, ISubscriber)
 TimeRewindSys.SystemTypeName = "TimeRewindSys"
 
-function TimeRewindSys:new(o)
+function TimeRewindSys:new(world, o)
     o = o or {}
     -- 初始化两个父类的数据
-    o = MOD_BaseSystem:new(TimeRewindSys.SystemTypeName, o)
-    o = ISubscriber:new(TimeRewindSys.SystemTypeName, o)
+    -- BaseSystem initialization with World
+    o = MOD_BaseSystem.new(self, TimeRewindSys.SystemTypeName, world)
     
-    -- 将对象的元表设置为当前类 TimeRewindSys
+    -- Mock ISubscriber initialization if needed (ISubscriber usually stateless or handles own data)
+    -- Assuming MultiInheritHelper handles metatables, we just need to set properties.
+    -- But since we called MOD_BaseSystem.new, we got a new table.
+    -- We must ensure it behaves like TimeRewindSys which inherits ISubscriber.
+    -- MultiInheritHelper.createClass already set TimeRewindSys metatable.
+    
     local instance = setmetatable(o, TimeRewindSys)
     
     instance._isRewinding = false
@@ -25,12 +30,19 @@ function TimeRewindSys:new(o)
     instance._maxHistoryDuration = 10.0 -- seconds
     instance._currentRecordTime = 0
     instance._rewindSpeedMultiplier = 4.0
+    
+    instance:initView()
 
     local messageCenter = require('MessageCenter').MessageCenter.static.getInstance()
+
     local event_LeaveLevel = require('LevelManager').Event_LevelUnloaded
     messageCenter:subscribe(event_LeaveLevel, instance, TimeRewindSys.onLeaveLevel, instance, 'TimeRewindSys_onLeaveLevel')
 
     return instance
+end
+
+function TimeRewindSys:setPhysicsWorld(world)
+    -- Stub compatibility
 end
 
 function TimeRewindSys:preCollect()

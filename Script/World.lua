@@ -9,6 +9,8 @@ local ComponentsView = require('ComponentsView')
 ---@field _pendingAdds Entity[]
 ---@field _pendingRemoves Entity[]
 ---@field _pendingDestruction Entity[] (Zombie State)
+---@field _mainCharacter Entity|nil
+---@field _mainCamera Entity|nil
 local World = {}
 World.__index = World
 
@@ -31,6 +33,8 @@ function World:init()
     self._pendingAdds = {}
     self._pendingRemoves = {}
     self._pendingDestruction = {}
+    self._mainCharacter = nil
+    self._mainCamera = nil
 end
 
 --- Retrieves or creates a ComponentsView for the given requirements
@@ -59,11 +63,69 @@ function World:getComponentsView(requiredComponentInfos)
 end
 
 -- Temporary placeholder for Phase 2/3 methods to allow compilation/loading
-function World:registerSystem(system) end
-function World:unregisterSystem(system) end
-function World:addEntity(entity) end
-function World:removeEntity(entity) end
+function World:registerSystem(system)
+    self._systems[system._nameOfSystem] = system
+    -- Note: Systems should ideally initialize their view during creation, but as a safeguard we could ensure it here
+    -- system:initView() 
+end
+function World:unregisterSystem(system)
+    self._systems[system._nameOfSystem] = nil
+end
+
+function World:addEntity(entity)
+    local id = entity:getID_const()
+    if self._entities[id] then return end
+    self._entities[id] = entity
+    
+    -- Notify all views
+    for _, view in pairs(self._views) do
+        view:add(entity)
+    end
+end
+
+function World:removeEntity(entity)
+    local id = entity:getID_const()
+    if not self._entities[id] then return end
+    self._entities[id] = nil
+    
+    -- Notify all views
+    for _, view in pairs(self._views) do
+        view:remove(entity)
+    end
+end
+
 function World:update(dt) end
 function World:draw() end
 
-return World
+---@return table<string, Entity>
+function World:getAllEntities()
+    return self._entities
+end
+
+---@param systemName string
+---@return BaseSystem
+function World:getSystem(systemName)
+    return self._systems[systemName]
+end
+
+---@param entity Entity|nil
+function World:setMainCharacter(entity)
+    self._mainCharacter = entity
+end
+
+---@return Entity|nil
+function World:getMainCharacter()
+    return self._mainCharacter
+end
+
+---@param entity Entity|nil
+function World:setMainCamera(entity)
+    self._mainCamera = entity
+end
+
+---@return Entity|nil
+function World:getMainCamera()
+    return self._mainCamera
+end
+
+return { World = World }
