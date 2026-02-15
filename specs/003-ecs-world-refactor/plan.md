@@ -54,9 +54,7 @@ specs/003-ecs-world-refactor/
 ```text
 Script/
  World.lua            # [NEW] Main World Singleton
- ECS/                 # [NEW] Folder for core ECS logic? Or keep in utils?
-    ComponentsView.lua # [NEW] View logic
-    Archetype.lua      # [NEW] Helper for signature optimization (optional)
+ ComponentsView.lua   # [NEW] View logic
  Entity.lua           # [UPDATE] Add ref counting & world context
  BaseSystem.lua       # [UPDATE] Add registration logic & view retrieval
  main.lua             # [UPDATE] Use World for update/draw loop
@@ -68,6 +66,7 @@ Script/
 -   New `World.lua` in `Script/`. 
 -   `ComponentsView` implementation detailed in `Script/ComponentsView.lua` (or similar).
 -   Modifications to `Entity.lua` and `BaseSystem.lua`.
+-   (*Change*): Removed `Archetype.lua` - logic consolidated into `ComponentsView` utils.
 
 ## Complexity Tracking
 
@@ -80,42 +79,49 @@ Script/
 ### Phase 0: Outline & Research
 
 1.  **Extract unknowns from Technical Context**:
-    -   NEEDS CLARIFICATION: exact implementation of `ComponentsView` with Lua tables to avoid holes (nil).
-    -   NEEDS CLARIFICATION: exact update timing for Views (deferred vs immediate).
-    -   NEEDS CLARIFICATION: preserving update order in Views (Hierarchy).
+    -   (Resolved) Implementation of `ComponentsView`: Shared Global Sentinel.
+    -   (Resolved) Update Timing: Deferred Updates.
+    -   (Resolved) Hierarchy: Preserve Order with `table.remove`.
 
 2.  **Generate and dispatch research agents**:
-    -   Task: "Research Lua best practices for dense arrays with optional holes (Sentinel values)."
-    -   Task: "Evaluate performance trade-offs of Deferred vs Immediate View updates."
-    -   Task: "Analyze impact on `TimeRewindSys` - how to hook into `World` ref counting."
+    -   (Done) Research best practices for sparse/optional components.
+    -   (Done) Evaluate View update strategies.
+    -   (Done) Research canonical View Key generation (Sorted + ReadOnly flags).
+    -   (Done) Define Entity-to-Index strategy for ComponentsView (Reverse Map + Shift).
 
-3.  **Consolidate findings** in `research.md`.
+3.  **Consolidate findings**:
+    -   See `specs/003-ecs-world-refactor/research.md`.
 
 ### Phase 1: Design & Contracts
 
 **Prerequisites**: `research.md` complete
 
-1.  **Extract entities from feature spec**  `data-model.md`:
-    -   `World`: Properties (entities, systems, views, queues, dirty lists).
-    -   `ComponentsView`: Properties (signature, arrays, ref_count).
-    -   `Entity` (Updates): `ref_count` + `isArchetypeDirty`.
+1.  **Extract entities from feature spec** -> `data-model.md`:
+    -   Defined `World`, `ComponentsView`, and `Entity` extensions.
+    -   See `specs/003-ecs-world-refactor/data-model.md`.
 
-2.  **Generate API contracts** from functional requirements:
-    -   `World`: `addEntity`, `removeEntity`, `registerSystem`, `clean()`.
-    -   `ComponentsView`: `iterate()`, `add(entity)`, `remove(entity)`.
+2.  **Generate API contracts**:
+    -   Contracts created in `specs/003-ecs-world-refactor/contracts/`.
+    -   `World.lua` and `ComponentsView.lua` interfaces defined.
 
 3.  **Agent context update**:
-    -   Update agent context with new core classes.
+    -   (Pending) Update agent context with new core classes.
 
 ### Phase 2: Implementation Tasks
 
 1.  **Core Implementation**:
-    -   Create `ComponentsView.lua` (SoA + Table.remove).
+    -   Create `ComponentsView.lua`:
+        -   Implement SoA structure with Shared Global Sentinel (`ComponentsView.EMPTY`).
+        -   Implement `entity_to_index` map (Reverse Index) for O(1) entity lookup during removal.
+        -   Implement removal via `table.remove` (shift) to preserve order, iterating to update `entity_to_index` for shifted elements.
     -   Create `World.lua` (Skeleton + Singleton logic + Dirty Queue).
     -   Update `Entity.lua` with reference counting & dirty flags.
+    -   Implement `World:getComponentsView(componentRequirements)` which parses `_requiredComponentInfos`, generates a canonical View Key, and returns a cached/new View.
 
 2.  **System Integration**:
-    -   Update `BaseSystem.lua` to accept `World` and request Views.
+    -   Update `BaseSystem.lua`:
+        -   Accept `World` in constructor.
+        -   Call `World:getComponentsView(self._requiredComponentInfos)` in `new` (or `init`) and store `self._componentsView`.
     -   Refactor all existing Systems (one by one/batch) to register with `World` and use Views.
         -   `TransformUpdateSys`, `DisplaySys`, etc.
     -   **Important**: Ensure Systems handle potentially deprecated entities delicately if interacting across Views (though Deferred updates mean Views are stable *per frame*).

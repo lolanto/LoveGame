@@ -1,3 +1,13 @@
+<!-- Sync Impact Report
+Version Change: 1.0.0 -> 1.1.0
+Modified Principles:
+- I. Pure ECS Architecture: Refocused on architectural patterns; documentation rules moved to V.
+Added Principles:
+- V. Documentation-Driven Development: Explicit rules for consulting and updating architectural documentation.
+Templates to Update:
+- .specify/templates/tasks-template.md (Added specific documentation checks)
+-->
+
 # LoveGame Constitution
 <!-- Project: 2D Side-Scrolling Action Adventure with Gravity & Time Control -->
 
@@ -9,10 +19,6 @@
 *   **Systems** (`Script/System/*`) hold all **Logic**. They operate on entities possessing specific component signatures.
 *   **Entities** are merely ID containers. No "God Classes" or monolithic inheritance structures for GameObjects.
 *   This project follows the ECS architecture defined in [architecture.md](./architecture.md).
-*   This document [architecture-components.md](./architecture-components.md) is an index of all existing components. Update this document every time a component been created or removed.
-*   Detail of each component is stored under folder of `./specify/memory/components`. Every time the implementation of a component is updated, the corresponding document should be updated at the same time.
-*   This document [architecture-systems.md](./architecture-systems.md) is an index of all existing systems. Update this document every time a system been created or removed.
-*   Detail of each system is stored under folder of `./specify/memory/systems`. Every time the implementation of a system is updated, the corresponding document should be updated at the same time.
 
 ### II. Time-Aware System Design
 **All Systems Must Support Time Manipulation.**
@@ -30,6 +36,14 @@
 **Entities are Assembled, Not Inherited.**
 *   Behavior is defined by the aggregation of Components. What an entity is depends on what components it has.
 *   Try to control the total type of components and reuse existing component as much as possible.
+
+### V. Documentation-Driven Development
+**Code and Documentation Must stay Synced.**
+*   **Source of Truth**: The [architecture.md](./architecture.md) file is the authoritative guide for the project's architectural decisions. Always consult it before making structural changes.
+*   **Usage Rule**: Before using a System or Component, you MUST consult its specific documentation via the index files:
+    *   [architecture-systems.md](./architecture-systems.md) for Systems (e.g., using `TimeRewindSys` requires checking `time-rewind-system.md`).
+    *   [architecture-components.md](./architecture-components.md) for Components.
+*   **Sync Rule**: Any modification to a System or Component's logic MUST be accompanied by a simultaneous update to its corresponding documentation file in `.specify/memory/systems/` or `.specify/memory/components/`.
 
 ## Technical Constraints & Architecture
 
@@ -55,4 +69,4 @@
 *   **Type Annotations**: Use EmmyLua/LuaLS annotations (`--- @class`, `--- @type`) to maintain code intelligence/maintainability.
 *   **Defensive Checks**: Use `assert` to validate critical state assumptions (e.g., Singleton existence, Component requirement).
 
-**Version**: 1.0.0 | **Ratified**: 2026-02-08 | **Context**: 2D Action-Adventure (Gravity/Time)
+**Version**: 1.1.0 | **Ratified**: 2026-02-08 | **Amended**: 2026-02-15 | **Context**: 2D Action-Adventure (Gravity/Time)
