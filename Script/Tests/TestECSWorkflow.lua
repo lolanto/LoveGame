@@ -18,6 +18,9 @@ function TestECSWorkflow.run()
     TestECSWorkflow.test_T033_DeferredUpdates(worldProxy)
     TestECSWorkflow.test_T032_HierarchyDestruction(worldProxy)
     TestECSWorkflow.test_T031_TimeRewindZombie(worldProxy)
+    TestECSWorkflow.test_T050_Idempotency(worldProxy)
+    TestECSWorkflow.test_T051_Resurrection(worldProxy)
+    TestECSWorkflow.test_T052_RecursiveOps(worldProxy)
 
     print("====================================")
     print("All Tests Passed Successfully")
@@ -184,6 +187,150 @@ function TestECSWorkflow.test_T031_TimeRewindZombie(world)
     -- FIX: For the test to pass and logic to be consistent, World should probably call a standard destruction method.
     -- I will verify this in the test. If `destroy` is missing, nothing happens, which is a leak.
     -- I should update Entity.lua to have `destroy()` method that does cleanup.
+end
+
+-- T050 Verify Idempotency: Adding/Removing same entity multiple times in one frame works as expected
+function TestECSWorkflow.test_T050_Idempotency(world)
+    print("\nTest T050: Idempotency")
+    
+    local entity = Entity:new("IdempotencyEntity")
+    local MyComp = require('Component.TransformCMP').TransformCMP
+    entity:boundComponent(MyComp:new())
+    
+    -- 1. Multiple Adds (same frame)
+    world:addEntity(entity)
+    world:addEntity(entity)
+    world:addEntity(entity)
+    
+    world:clean()
+    
+    -- Verify single instance in world
+    local allEntities = world:getAllManagedEntities()
+    local count = 0
+    for _, e in ipairs(allEntities) do
+        if e == entity then count = count + 1 end
+    end
+    TestECSWorkflow.assert(count == 1, "Entity should be added exactly once (Idempotent Add)")
+    
+    -- 2. Add then Remove (same frame) -> Cancellation
+    local ent2 = Entity:new("CancelEntity")
+    ent2:boundComponent(MyComp:new())
+    world:addEntity(ent2)
+    world:removeEntity(ent2) -- Should cancel the add
+    world:clean()
+    -- Verify not in world
+    local found = false
+    local allEntities2 = world:getAllManagedEntities()
+    for _, e in pairs(allEntities2) do
+        if e == ent2 then found = true break end
+    end
+    TestECSWorkflow.assert(not found, "Add then Remove in same frame should result in NO entity")
+    
+    -- 3. Remove then Add (same frame) -> Cancellation (Resurrection/Stay)
+    -- Allow ent2 to serve as test subject. First add it properly.
+    world:addEntity(ent2)
+    world:clean()
+    
+    world:removeEntity(ent2)
+    world:addEntity(ent2) -- Should cancel the remove
+    
+    world:clean()
+    
+    -- Verify still in world
+    found = false
+    local allEntities3 = world:getAllManagedEntities()
+    for _, e in pairs(allEntities3) do
+        if e == ent2 then found = true break end
+    end
+    TestECSWorkflow.assert(found, "Remove then Add in same frame should result in Entity STAYING")
+end
+
+-- T051 Verify Resurrection: Re-adding a Zombie entity successfully brings it back to life
+function TestECSWorkflow.test_T051_Resurrection(world)
+    print("\nTest T051: Resurrection")
+    
+    local entity = Entity:new("Lazarus")
+     local MyComp = require('Component.TransformCMP').TransformCMP
+    entity:boundComponent(MyComp:new())
+    
+    world:addEntity(entity)
+    world:clean()
+    
+    -- 1. Make Zombie (Retain + Remove)
+    entity:retain()
+    world:removeEntity(entity)
+    world:clean()
+    
+    -- Modify Component to prove it's the same entity
+    local cmp = entity:getComponent(MyComp.ComponentTypeID)
+    if cmp then cmp:setWorldPosition(100, 100) end
+    
+    -- 2. Resurrect (Add Entity while it is Zombie)
+    world:addEntity(entity)
+    world:clean()
+    
+    -- 3. Verify it is back in Views
+    local view = world:getComponentsView({ [MyComp.ComponentTypeID] = { type = MyComp.ComponentTypeID } })
+    local found = false
+    for i = 1, view._count do
+        if view._components[MyComp.ComponentTypeID][i]._entity == entity then
+            found = true
+            break
+        end 
+    end
+    TestECSWorkflow.assert(found, "Resurrected Zombie Entity should be back in Views")
+    
+    -- Cleanup
+    entity:release() -- Balance retain
+end
+
+-- T052 Verify Recursive Cancellation and Resurrection
+function TestECSWorkflow.test_T052_RecursiveOps(world)
+    print("\nTest T052: Recursive Cancellation")
+    
+    local parent = Entity:new("Parent")
+    local child = Entity:new("Child")
+    local MyComp = require('Component.TransformCMP').TransformCMP
+    parent:boundComponent(MyComp:new())
+    child:boundComponent(MyComp:new())
+    parent:boundChildEntity(child)
+    
+    -- 1. Add Parent (and Child implicitly) then Remove Parent immediately
+    world:addEntity(parent)
+    world:removeEntity(parent)
+    
+    world:clean()
+    
+    -- Verify NEITHER are in world
+    local allEntities = world:getAllManagedEntities()
+    local pFound, cFound = false, false
+    for _, e in pairs(allEntities) do
+        if e == parent then pFound = true end
+        if e == child then cFound = true end
+    end
+    TestECSWorkflow.assert(not pFound, "Parent should be cancelled (Add -> Remove)")
+    TestECSWorkflow.assert(not cFound, "Child should be cancelled recursively (Add -> Remove)")
+
+    -- 2. Add Parent (clean first), then Remove Parent, then Add Parent again (Resurrect/Cancel Remove)
+    -- Start fresh
+    world:addEntity(parent)
+    world:clean()
+    -- Both should be in
+    
+    world:removeEntity(parent) -- Marks parent and child for removal
+    world:addEntity(parent) -- Should cancel remove for parent AND child
+    
+    world:clean()
+    
+    allEntities = world:getAllManagedEntities()
+    pFound, cFound = false, false
+    for _, e in pairs(allEntities) do
+        if e == parent then pFound = true end
+        if e == child then cFound = true end
+    end
+    TestECSWorkflow.assert(pFound, "Parent should stay (Remove -> Add)")
+    TestECSWorkflow.assert(cFound, "Child should stay recursively (Remove -> Add)")
+
 end
 
 return TestECSWorkflow

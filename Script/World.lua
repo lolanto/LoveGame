@@ -40,8 +40,11 @@ function World:init()
     self._systems = {}
     self._dirtyEntities = {}
     self._pendingAdds = {}
+    self._pendingAddSet = {} -- Set for O(1) checking
     self._pendingRemoves = {}
+    self._pendingRemoveSet = {} -- Set for O(1) checking
     self._pendingDestruction = {} -- Zombie State list
+    self._pendingDestructionSet = {} -- Set for O(1) checking
     self._collisionEvents = {} -- T037 Collision Events
     self._mainCharacter = nil
     self._mainCamera = nil
@@ -93,12 +96,42 @@ function World:unregisterSystem(system)
 end
 
 function World:addEntity(entity)
-    -- Assign World reference immediately so component changes during setup are tracked (if any)
-    -- Though dirty logic only processes if entity is in _entities list, which happens in clean.
-    entity:setWorld(self)
+    local id = entity:getID_const()
 
-    -- Instead of adding immediately, we queue it
-    table.insert(self._pendingAdds, entity)
+    -- 1. Idempotency Check: Already Active (and not pending removal)
+    if self._entities[id] and not self._pendingRemoveSet[id] then
+        return
+    end
+
+    -- 2. Idempotency Check: Already Pending Add
+    if self._pendingAddSet[id] then
+        return
+    end
+    local updatePendingAdd = true
+    -- 3. Cancellation: If pending removal, cancel it
+    if self._pendingRemoveSet[id] then
+        -- Cancel removal: Remove from set so clean() skips it
+        self._pendingRemoveSet[id] = nil
+        -- Ensure World reference is restored if it was cleared
+        entity:setWorld(self)
+        updatePendingAdd = false -- Already in entities, just cancel pending remove, no need to re-adds
+    end
+
+    -- 4. Resurrection: If pending destruction (Zombie), bring back
+    if self._pendingDestructionSet[id] then
+        self._pendingDestructionSet[id] = nil
+        -- Remove from actual list happens in clean() via set check or we just re-add it now and let clean handle it?
+        -- Simplest: Treat as new add, clean() will see it's not in entities yet. 
+        -- But we need to ensure it's removed from pendingDestruction list eventually. 
+        -- We'll handle that by rebuilding pendingDestruction in clean().
+    end
+
+    -- 5. Standard Add
+    entity:setWorld(self)
+    if updatePendingAdd then
+        table.insert(self._pendingAdds, entity)
+        self._pendingAddSet[id] = true
+    end
 
     local children = entity:getChildren()
     for _, child in pairs(children) do
@@ -109,9 +142,29 @@ end
 --- Recursively requests removal of entity and its children
 ---@param entity Entity
 function World:removeEntity(entity)
-    entity:setWorld(nil) -- Clear World reference immediately to prevent further changes being tracked
-    
-    table.insert(self._pendingRemoves, entity)
+    local id = entity:getID_const()
+
+    if not self._entities[id] then
+        return
+    end
+    -- 1. Idempotency Check: Already Pending Remove
+    if self._pendingRemoveSet[id] then
+        return
+    end
+
+    local updatePendingRemove = true
+    -- 2. Cancellation: If Pending Add, cancel it
+    if self._pendingAddSet[id] then
+        self._pendingAddSet[id] = nil
+        updatePendingRemove = false -- Not in entities yet, just cancel pending add, no need to queue remove
+    end
+
+    -- 3. Standard Remove (if strictly active)
+    entity:setWorld(nil) -- Clear World reference immediately
+    if updatePendingRemove then
+        table.insert(self._pendingRemoves, entity)
+        self._pendingRemoveSet[id] = true
+    end
 
     local children = entity:getChildren()
     for _, child in pairs(children) do
@@ -133,11 +186,11 @@ function World:clean()
         end
     end
     self._pendingAdds = {}
+    self._pendingAddSet = {} -- Clear Set
 
-    -- 2. Process Dirty Entities (Deferred Archetype Updates)
+    -- 2. Process Dirty Entities (Deferred Archetype Update)
     for id, entity in pairs(self._dirtyEntities) do
         -- Only process if entity is still tracked and fully setup
-        local isPendingRemove = false
         -- Optimization: Could check pendingRemoves set, but cleaner to just check if valid
         if self._entities[id] then
              entity:setIsArchDirty(false)
@@ -156,7 +209,7 @@ function World:clean()
     -- 3. Process Pending Removes
     for _, entity in ipairs(self._pendingRemoves) do
         local id = entity:getID_const()
-        -- Only process if it is in the world
+        -- Only process if it is in the world as managed/active
         if self._entities[id] then
             -- Remove from main active list
             self._entities[id] = nil
@@ -168,15 +221,22 @@ function World:clean()
             
             -- Move to Pending Destruction (Zombie State check)
             table.insert(self._pendingDestruction, entity)
+            self._pendingDestructionSet[id] = true
         end
     end
     self._pendingRemoves = {}
+    self._pendingRemoveSet = {} -- Clear Set
     
     -- 4. Garbage Collection Tick for Zombies
     local rw_index = 1
+    -- Reset set for compaction
+    self._pendingDestructionSet = {}
+    
     for i = 1, #self._pendingDestruction do
         local entity = self._pendingDestruction[i]
+        local id = entity:getID_const()
         
+        -- Check if resurrected (active in world again)
         if entity:getRefCount_const() <= 0 then
             -- Safe to destroy completely
             if entity.destroy then
@@ -188,6 +248,7 @@ function World:clean()
             if rw_index ~= i then
                 self._pendingDestruction[rw_index] = entity
             end
+            self._pendingDestructionSet[id] = true
             rw_index = rw_index + 1
         end
     end

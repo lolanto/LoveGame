@@ -56,20 +56,28 @@ Refactor the current ECS system management to introduce a central `World` single
 
 ### 2. Entity Management
 -   **Add Entity**:
-    -   `World:addEntity(entity)`: Adds an entity to the `Managed` list.
+    -   `World:addEntity(entity)`: Queues an entity to be added to the `Managed` list.
     -   Must handle recursive addition of child entities.
-    -   Must trigger updates to all relevant `ComponentsView`s (add entity's components to views if criteria matched).
+    -   **Idempotency (Frame Scope)**: Calling `addEntity` multiple times for the same entity in a single frame is safe; subsequent calls are ignored (Add + Add = Add).
+    -   **Cancellation**: If `removeEntity` was previously called for this entity in the *same frame*, `addEntity` cancels the pending removal. The entity remains in the World (Remove + Add = No-op). **This must apply recursively to all child entities.**
+    -   **Resurrection**: If the entity is currently in "Zombie State" (removed but referenced), `addEntity` resurrects it, restoring it to the `Managed` list and treating it as a new addition for `ComponentsView`s. **This must apply recursively to all child entities.**
 -   **Remove Entity**:
-    -   `World:removeEntity(entity)`: Marks an entity for removal from the `Managed` list.
+    -   `World:removeEntity(entity)`: Queues an entity for removal from the `Managed` list.
     -   Must handle recursive removal of child entities.
-    -   Entity enters a "Pending Destruction" state/queue.
-    -   Must trigger updates to all relevant `ComponentsView`s (remove entity's components from views).
+    -   **Idempotency (Frame Scope)**: Calling `removeEntity` multiple times in a single frame is safe; subsequent calls are ignored (Remove + Remove = Remove).
+    -   **Cancellation**: If `addEntity` was previously called for this entity in the *same frame*, `removeEntity` cancels the pending addition. The entity never enters the World (Add + Remove = No-op). **This must apply recursively to all child entities.**
+-   **Deferred Processing**:
+    -   Actual topological changes (insertion into `Managed` list, updates to `ComponentsView`) happen at the start of the next Tick (Reconciliation Phase).
 -   **State Changes**:
     -   Enabling/Disabling an entity (or component) should trigger similar updates to `ComponentsView` as add/remove.
 
 ### 3. Entity Lifecycle & Time Rewind Compatibility
 -   **Pending Destruction Queue**: Entities marked for removal are not destroyed immediately. They are placed in a queue.
--   **Zombie State**: When `removeEntity` is called, if `refCount > 0` (e.g., held by Rewind), the entity enters "Zombie" state. It is removed from all Component Views (logic effectively stops) but `World` retains the memory reference until `refCount` drops to zero, primarily for serialization stability.
+-   **Zombie State**: 
+    -   When `removeEntity` is called and processed, if `refCount > 0` (e.g., held by Rewind), the entity enters "Zombie" state. 
+    -   It is removed from `Managed` list and all Component Views (logic stops).
+    -   `World` retains the memory reference until `refCount` drops to zero.
+    -   **Resurrection**: If `addEntity` is called on a Zombie entity, it transitions back to a normal Managed entity.
 -   **Reference Counting**:
     -   All Entities must have a reference count.
     -   `TimeRewindSys` increments this count when an entity is included in a snapshot.
@@ -110,10 +118,16 @@ Refactor the current ECS system management to introduce a central `World` single
 
 
 ## Success Criteria
--   **Centralized Control**: `main.lua` no longer manually manages list of entities/systems; it delegates to `World`.
--   **Safe Destruction**: Entities referenced by Time Rewind snapshots are guaranteed not to be nil/destroyed until safely released.
--   **Performance**: System iteration does not scan all entities; it iterates only over pre-filtered `ComponentsView`s.
--   **Correct Hierarchy**: Adding/Removing a parent entity correctly manages the lifecycle of the entire subtree.
+-   **API Consolidation**: `main.lua` contains 0 functional logic for entity/system management; all such logic is invoked via `World` methods.
+-   **Safe Destruction**: 
+    -   Unit tests verify that an entity marked for removal (`removeEntity`) but held by `TimeRewindSys` (`refCount > 0`) is NOT collected by the Garbage Collector.
+    -   Unit tests verify that `addEntity` on a Zombie entity successfully restores it to the active World simulation.
+-   **Idempotency Verification**:
+    -   Calling `addEntity` 2+ times in one frame results in exactly 1 addition event/entity in the World.
+    -   Calling `addEntity` then `removeEntity` (or vice versa) in one frame results in the correct final state (Added or Removed) as specified in requirements.
+-   **Performance Optimization**: 
+    -   System component iteration uses `ComponentsView` (O(N_matching)) instead of Global List iteration (O(N_all)).
+-   **Hierarchy Integrity**: Removing a parent entity results in all its child entities being removed from `Managed` lists and `ComponentsView`s in the same frame.
 
 ## Assumptions
 -   The current Entity/Component structure allows for adding a "reference count" property to the base Entity class.

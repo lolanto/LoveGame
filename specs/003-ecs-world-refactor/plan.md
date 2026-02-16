@@ -133,7 +133,10 @@ Script/
     -   **Important**: Ensure Systems handle potentially deprecated entities delicately if interacting across Views (though Deferred updates mean Views are stable *per frame*).
 
 3.  **Lifecycle & Time Rewind**:
-    -   Implement `World:addEntity`/`removeEntity` recursive logic (Add to Pending lists).
+    -   Implement `World:addEntity`/`removeEntity` with **Robustness Logic**:
+        -   **Idempotency**: Ignore duplicate adds/removes in the same frame.
+        -   **Cancellation**: `add` cancels `remove` (entity stays), `remove` cancels `add` (entity never enters). **Ensure recursive application to children.**
+        -   **Resurrection**: `addEntity` on a Zombie entity (refCount > 0 but removed) moves it back to `Managed` list (via `_pendingAdd`). **Ensure recursive resurrection of children.**
     -   Implement `World:clean()`: Process Pending Adds/Removes AND Dirty Archetypes.
     -   (Updated) Implement Entity List APIs:
         -   `World:getAllManagedEntities()`: Return complete list of entities (including disabled/zombies).

@@ -59,6 +59,10 @@ end
 --- Increments the reference count
 function Entity:retain()
     self._refCount = self._refCount + 1
+    --- recursively retain child entities to ensure they stay alive as long as the parent is referenced
+    for _, child in pairs(self._childEntities) do
+        child:retain()
+    end
 end
 
 --- Decrements the reference count
@@ -66,6 +70,10 @@ function Entity:release()
     self._refCount = self._refCount - 1
     if self._refCount < 0 then
         error("Entity refCount < 0: " .. self._nameOfEntity)
+    end
+    --- recursively release child entities to allow them to be cleaned up when parent is released
+    for _, child in pairs(self._childEntities) do
+        child:release()
     end
 end
 
