@@ -36,12 +36,15 @@ end
 
 function GravitationalFieldCMP:addIgnoreEntity(entity)
     if entity then
-        self._ignoreEntities[entity] = true
+        self._ignoreEntities[entity:getID_const()] = true
     end
 end
 
 function GravitationalFieldCMP:isIgnored_const(entity)
-    return self._ignoreEntities[entity] == true
+    if entity then
+        return self._ignoreEntities[entity:getID_const()] == true
+    end
+    return false
 end
 
 function GravitationalFieldCMP:getRewindState_const()

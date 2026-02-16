@@ -119,7 +119,7 @@ function LevelManager:_instantiateComponent(compData)
             MUtils.Error(LOG_MODULE, "PhysicSys not found during component instantiation")
             return nil 
         end
-        local physicsWorld = physicsSys:getWorld()
+        local physicsWorld = physicsSys:getPhysicsWorld()
         
         -- Need to convert pure data shape to Shape object
         -- We assume the PhysicCMP.Shape class is available via require('Component.PhysicCMP').Shape
@@ -152,7 +152,7 @@ function LevelManager:_instantiateComponent(compData)
             fixedRotation = compData.args.fixedRotation
         }
         
-        instance = Class:new(world, opts)
+        instance = Class:new(physicsWorld, opts)
     else
         -- Generic instantiation
         -- compData.args is expected to be a list of arguments for :new(...)

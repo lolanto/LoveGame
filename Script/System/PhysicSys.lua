@@ -68,8 +68,9 @@ function PhysicSys:tick(deltaTime)
     -- self._collisionEvents = {} -- Handled by World:clean()
     
     local view = self:getComponentsView()
-    local physics = view._components[PhysicCMP.ComponentTypeID]
-    local transforms = view._components[TransformCMP.ComponentTypeID]
+    -- CHANGE: Use ComponentTypeName instead of ComponentTypeID
+    local physics = view._components[PhysicCMP.ComponentTypeName]
+    local transforms = view._components[TransformCMP.ComponentTypeName]
     
     if not physics or not transforms then return end
     local count = view._count

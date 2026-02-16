@@ -15,7 +15,7 @@
 
 -   **Architecture Fit**:
     -   **Pure ECS**: We will add `GravitationalFieldCMP` (Data) and `BlackHoleSys` (Logic).
-    -   **Physics**: We will use `love.physics.Body:applyForce`.
+    -   **Physics**: We will use `love.physics.Body:applyForce` with **Mass-Independent** calculation (`F = m*a`).
     -   **Input**: Implement `processUserInput` to consume 'T' key press via `UserInteractController`.
 
 ### Codebase Map
@@ -32,6 +32,7 @@
 -   [ ] **Pure ECS**: `GravitationalFieldCMP` will only contain radius, force, duration. No methods. `BlackHoleSys` will handle logic.
 -   [ ] **Time-Aware**: `BlackHoleSys` must use `dt` (delta time) for duration counting.
 -   [ ] **Physics-First**: We are applying physics forces.
+-   [ ] **Mass-Independent**: Force calculation must account for object mass to ensure uniform acceleration.
 -   [ ] **Modular**: Black Hole is an entity composed of `TransformCMP`, `GravitationalFieldCMP`, `DebugColorCircleCMP`.
 
 ## Gates
@@ -61,6 +62,8 @@
     -   Implement `processUserInput(controller)` for 'T' key detection.
     -   Implement `tick(dt)` for validity check & force application.
     -   Implement `applyAttraction` using `physicsSys` list.
+        -   **Filter**: Ignore `_ignoreEntities` (by Entity ID).
+        -   **Force**: Apply `(Strength * Mass) / Distance^2`.
 3.  **Integration**:
     -   Add `BlackHoleSys` to `main.lua`.
     -   Inject `PhysicSys` into `BlackHoleSys`.

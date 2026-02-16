@@ -35,7 +35,7 @@ end
 
 ---获取当前镜头的水平和垂直缩放(平移旋转由Transform组件控制)
 ---@return love.Transform
-function CameraCMP:getProjectionTransform()
+function CameraCMP:getProjectionTransform_const()
     ---@type RenderEnv const
     local renderEnvObj = require('RenderEnv').RenderEnv.getGlobalInstance_const()
 

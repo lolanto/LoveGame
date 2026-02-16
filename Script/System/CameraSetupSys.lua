@@ -38,8 +38,9 @@ function CameraSetupSys:tick(deltaTime)
 
     -- 使用ComponentsView获取所有Camera
     local view = self:getComponentsView()
-    local cameras = view._components[CameraCMP.ComponentTypeID]
-    local transforms = view._components[TransformCMP.ComponentTypeID]
+    -- CHANGE: Use ComponentTypeName instead of ComponentTypeID
+    local cameras = view._components[CameraCMP.ComponentTypeName]
+    local transforms = view._components[TransformCMP.ComponentTypeName]
 
     if not cameras or not transforms then return end
     
@@ -64,7 +65,7 @@ function CameraSetupSys:updateCameraInfo(cameraCmp, transformCmp)
     local renderEnvObj = require('RenderEnv').RenderEnv.getGlobalInstance()
     renderEnvObj:setViewWidth(cameraCmp:getViewWidthMeters_const())
 
-    local camProjTransform = cameraCmp:getProjectionTransform()
+    local camProjTransform = cameraCmp:getProjectionTransform_const()
     --- 计算一个完整的摄像机变换矩阵
     local camWorldTransform = transformCmp:getWorldTransform_const()
     

@@ -75,6 +75,17 @@
 - [x] T032 Validate Hierarchy destruction: Removing a parent correctly removes children from Views (Verified via `Script/Tests/TestECSWorkflow.lua`)
 - [x] T033 Verify `ComponentsView` integrity: Entities added in frame N appear in Views in frame N+1 (Verified via `Script/Tests/TestECSWorkflow.lua`)
 
+## Phase 5: Regression & Keying Consistency (Plan Update)
+
+**Goal**: Ensure all systems access `ComponentsView` using string keys (Component Name) as mandated by the updated Spec/Plan.
+
+- [x] T043 Fix `DisplaySys.lua` to use Component Name string key for View access [Script/System/DisplaySys.lua](Script/System/DisplaySys.lua)
+- [x] T044 Fix `TransformUpdateSys.lua` to use Component Name string key for View access [Script/System/TransformUpdateSys.lua](Script/System/TransformUpdateSys.lua)
+- [x] T045 Fix `EntityMovementSys.lua` to use Component Name string key for View access [Script/System/EntityMovementSys.lua](Script/System/EntityMovementSys.lua)
+- [x] T046 Fix `PhysicSys.lua` to use Component Name string key for View access [Script/System/PhysicSys.lua](Script/System/PhysicSys.lua)
+- [x] T047 Fix all Gameplay systems View access keys (BlackHole, Patrol, Trigger, TimeDilation) [Script/System/Gameplay/](Script/System/Gameplay/)
+- [x] T048 Verify `ComponentsView` key generation matches string-based expectations [Script/ComponentsView.lua](Script/ComponentsView.lua)
+
 ## Implementation Strategy
 
 1.  **Bottom-Up**: Start with `ComponentsView` as it has no dependencies.

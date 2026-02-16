@@ -10,6 +10,10 @@
 ### Session 2026-02-14
 -   Q: How should the 'T' key input be detected? → A: Input MUST be processed via `processUserInput(controller)` interface, using a `UserInteractDesc` consume info, rather than direct `love.keyboard` calls, to support uniform input management.
 
+### Session 2026-02-16
+-   Q: How should the 'Ignore List' (e.g. for the caster) identify entities? → A: Filtering MUST be performed by comparing unique Entity IDs.
+-   Q: How should the gravitational force be calculated relative to object mass? → A: **Mass-Independent**; the applied force must scale with the object's mass (`F = Mass * Strength / Distance^2`) so that all objects accelerate at the same rate regardless of weight.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Activate Black Hole (Priority: P1)
@@ -70,9 +74,10 @@ Mechanism**: Input binding MUST be handled via the `processUserInput` interface 
     -   The Black Hole must apply a force to all eligible entities within the radius each frame (or physics step).
     -   **Eligible Entities**: Entities with a dynamic physics component (movable).
     -   **Force Calculation**: A directional force vector from the object center to the Black Hole center.
-    -   **Force Falloff**: The force magnitude follows a non-linear curve (e.g., Inverse Square); it is very weak at the 5m edge and extremely strong near the center.
+    -   **Force Model**: The force must be **Mass-Independent** (simulate uniform acceleration). `AppliedForce = (ForceStrength * ObjectMass) / (DistanceSquared)`.
+    -   **Force Falloff**: The force magnitude follows an Inverse Square law. It is very weak at the 5m edge and extremely strong near the center.
     -   **Capture Mechanism**: Objects within a very small radius (e.g., < 0.5m) of the center should be "trapped" to prevent orbiting or flying out due to inertia. To avoid state persistence issues (e.g. during time rewind), this must be implemented as a **Simulated Drag Force** (applying force opposite to velocity) rather than modifying the body's `LinearDamping` property.
-    -   **Filtering**: The Black Hole must support an "Ignore List". Specific entities (e.g., the caster/player) can be added to this list to prevent them from being sucked in.
+    -   **Filtering**: The Black Hole must support an "Ignore List" containing **Entity IDs**. Specific entities (e.g., the caster/player) can be added to this list (by ID) to prevent them from being sucked in.
 
 ## Success Criteria *(mandatory)*
 
@@ -81,7 +86,7 @@ Mechanism**: Input binding MUST be handled via the `processUserInput` interface 
 -   **Timing**: Black Hole lasts exactly for the configured duration.
 -   **Selectivity**: Only "movable" objects are moved; static geometry is ignored.
 -   **Stability**: Captured objects settle near the center rather than slingshotting out.
--   **Safety**: The caster (Player) is not affected by their own Black Hole.
+-   **Safety**: The caster (Player) is not affected by their own Black Hole (verified by Entity ID).
     
     
 ## Non-Functional Requirements *(Time & Physics)*

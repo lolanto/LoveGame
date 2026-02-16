@@ -23,7 +23,8 @@ function TransformUpdateSys:tick(deltaTime)
     MOD_BaseSystem.tick(self, deltaTime)
     
     local view = self:getComponentsView()
-    local transforms = view._components[TransformCMP.ComponentTypeID]
+    -- CHANGE: Use ComponentTypeName instead of ComponentTypeID
+    local transforms = view._components[TransformCMP.ComponentTypeName]
     
     if not transforms then return end
     

@@ -82,6 +82,7 @@ Script/
     -   (Resolved) Implementation of `ComponentsView`: Shared Global Sentinel.
     -   (Resolved) Update Timing: Deferred Updates.
     -   (Resolved) Hierarchy: Preserve Order with `table.remove`.
+    -   (Resolved) Keying: Use Component Name strings (not IDs) for View access.
 
 2.  **Generate and dispatch research agents**:
     -   (Done) Research best practices for sparse/optional components.
@@ -128,6 +129,7 @@ Script/
         -   Call `World:getComponentsView(self._requiredComponentInfos)` in `new` (or `init`) and store `self._componentsView`.
     -   Refactor all existing Systems (one by one/batch) to register with `World` and use Views.
         -   `TransformUpdateSys`, `DisplaySys`, etc.
+        -   **Update Rule**: Ensure all Systems access View components using **Component Name Strings** (e.g. `view._components["DrawableCMP"]`) instead of Type IDs, to match `BaseSystem` keys.
     -   **Important**: Ensure Systems handle potentially deprecated entities delicately if interacting across Views (though Deferred updates mean Views are stable *per frame*).
 
 3.  **Lifecycle & Time Rewind**:

@@ -19,7 +19,7 @@ Polls the `userInteractController` for specific key bindings (WASD) and maps the
 ### 3. getControlCommands() (public)
 Returns the table of active commands for the current frame.
 
-### 4. doesCommandIsTriggered(command) (public)
+### 4. doesCommandIsTriggered_const(command) (public)
 Checks if a specific command is active.
 
 ### 5. clearControlCommands() (public)

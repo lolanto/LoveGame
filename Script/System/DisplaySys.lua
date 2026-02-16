@@ -22,7 +22,8 @@ function DisplaySys:tick(deltaTime)
     MOD_BaseSystem.tick(self, deltaTime)
     
     local view = self:getComponentsView()
-    local drawables = view._components[DrawableCMP.ComponentTypeID]
+    -- CHANGE: Use ComponentTypeName instead of ComponentTypeID
+    local drawables = view._components[DrawableCMP.ComponentTypeName]
     if not drawables then return end
     
     local count = view._count
@@ -39,8 +40,8 @@ function DisplaySys:draw()
     MOD_BaseSystem.draw(self)
     
     local view = self:getComponentsView()
-    local drawables = view._components[DrawableCMP.ComponentTypeID]
-    local transforms = view._components[TransformCMP.ComponentTypeID]
+    local drawables = view._components[DrawableCMP.ComponentTypeName]
+    local transforms = view._components[TransformCMP.ComponentTypeName]
     
     if not drawables or not transforms then return end
     

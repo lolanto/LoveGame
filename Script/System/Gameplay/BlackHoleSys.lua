@@ -29,8 +29,8 @@ function BlackHoleSys:new(world)
     instance:initView()
     -- Create a separate view for PhysicCMP since we need to iterate ALL physics objects against each black hole
     instance._physicsView = world:getComponentsView({
-        [PhysicCMP.ComponentTypeID] = ComponentRequirementDesc:new(true, true),
-        [TransformCMP.ComponentTypeID] = ComponentRequirementDesc:new(true, true) -- Need position? Or use Body position
+        [PhysicCMP.ComponentTypeName] = ComponentRequirementDesc:new(true, false),
+        [TransformCMP.ComponentTypeName] = ComponentRequirementDesc:new(true, true) -- Need position? Or use Body position
     })
     
     return instance
@@ -52,11 +52,11 @@ function BlackHoleSys:tick(deltaTime)
         self._spawnRequested = false
     end
     
-    -- Iterate Black Holes
+    -- Iterable Black Holes
     local view = self:getComponentsView()
-    local gravCmpList = view._components[GravitationalFieldCMP.ComponentTypeID]
-    local lifeCmpList = view._components[LifeTimeCMP.ComponentTypeID]
-    local transCmpList = view._components[TransformCMP.ComponentTypeID]
+    local gravCmpList = view._components[GravitationalFieldCMP.ComponentTypeName]
+    local lifeCmpList = view._components[LifeTimeCMP.ComponentTypeName]
+    local transCmpList = view._components[TransformCMP.ComponentTypeName]
     
     if not gravCmpList or not lifeCmpList or not transCmpList then return end
     
@@ -69,7 +69,7 @@ function BlackHoleSys:tick(deltaTime)
         local gravCmp = gravCmpList[i]
         local lifeCmp = lifeCmpList[i]
         local transCmp = transCmpList[i]
-        local entity = gravCmp:getEntity_const()
+        local entity = gravCmp:getEntity()
         
         -- Calculate gameDt for this entity
         local gameDt = tm:getDeltaTime(deltaTime, entity)
@@ -81,12 +81,7 @@ function BlackHoleSys:tick(deltaTime)
              local isExpired = lifeCmp:isExpired_const()
              
              if isExpired then
-                 entity:setEnable(false)
-                 entity:setVisible(false)
-                 
-                 if lifeCmp:getElapsedTime_const() > lifeCmp:getMaxDuration_const() + 15.0 then
-                     entity:markForDeletion()
-                 end
+                 self._world:removeEntity(entity)
              else
                  self:applyAttraction(transCmp, gravCmp, gameDt)
              end
@@ -159,7 +154,7 @@ function BlackHoleSys:spawnBlackHole()
 end
 
 function BlackHoleSys:applyAttraction(bhTrans, gravCmp, dt)
-    local physics = self._physicsView._components[PhysicCMP.ComponentTypeID]
+    local physics = self._physicsView._components[PhysicCMP.ComponentTypeName]
     local pCount = self._physicsView._count
     
     if not physics or pCount == 0 then return end
@@ -199,10 +194,13 @@ function BlackHoleSys:applyAttraction(bhTrans, gravCmp, dt)
                      -- and prevent them from accelerating infinitely
                      simulatedDamping = 1.0 
                      
-                     -- Inverse Square Law: F = k / r^2
-                     local strength = forceStr / (effectiveDist * effectiveDist)
+                     -- Inverse Square Law: F = (Strength * Mass) / r^2
+                     -- Start with mass-independent acceleration (Strength / r^2) then mul by mass for F=ma
+                     local acceleration = forceStr / (effectiveDist * effectiveDist)
+                     local forceMagnitude = acceleration * mass
+                     
                      local dirX, dirY = dx/dist, dy/dist
-                     pCmp:applyForce(dirX * strength, dirY * strength)
+                     pCmp:applyForce(dirX * forceMagnitude, dirY * forceMagnitude)
                  end
                  
                  if simulatedDamping > 0 then

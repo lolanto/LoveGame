@@ -100,7 +100,7 @@ function World:addEntity(entity)
     -- Instead of adding immediately, we queue it
     table.insert(self._pendingAdds, entity)
 
-    local children = entity:getChildren_const()
+    local children = entity:getChildren()
     for _, child in pairs(children) do
         self:addEntity(child) -- Recursively queue children for addition
     end
@@ -109,12 +109,11 @@ end
 --- Recursively requests removal of entity and its children
 ---@param entity Entity
 function World:removeEntity(entity)
-    -- 1. Mark recursively
-    entity:setMarkedForDestruction(true)
-    table.insert(self._pendingRemoves, entity)
+    entity:setWorld(nil) -- Clear World reference immediately to prevent further changes being tracked
     
-    -- 2. Recurse children
-    local children = entity:getChildren_const()
+    table.insert(self._pendingRemoves, entity)
+
+    local children = entity:getChildren()
     for _, child in pairs(children) do
         self:removeEntity(child)
     end
@@ -140,7 +139,7 @@ function World:clean()
         -- Only process if entity is still tracked and fully setup
         local isPendingRemove = false
         -- Optimization: Could check pendingRemoves set, but cleaner to just check if valid
-        if self._entities[id] and not entity:isMarkedForDestruction_const() then
+        if self._entities[id] then
              entity:setIsArchDirty(false)
              
              for _, view in pairs(self._views) do
@@ -178,7 +177,7 @@ function World:clean()
     for i = 1, #self._pendingDestruction do
         local entity = self._pendingDestruction[i]
         
-        if entity:getRefCount() <= 0 then
+        if entity:getRefCount_const() <= 0 then
             -- Safe to destroy completely
             if entity.destroy then
                 entity:destroy() -- Release resources if any

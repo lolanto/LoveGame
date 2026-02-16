@@ -27,9 +27,10 @@ function PatrolSys:tick(deltaTime)
     MOD_BaseSystem.tick(self, deltaTime)
     
     local view = self:getComponentsView()
-    local patrols = view._components[PatrolCMP.ComponentTypeID]
-    local movements = view._components[MovementCMP.ComponentTypeID]
-    local transforms = view._components[TransformCMP.ComponentTypeID]
+    -- CHANGE: Use ComponentTypeName instead of ComponentTypeID
+    local patrols = view._components[PatrolCMP.ComponentTypeName]
+    local movements = view._components[MovementCMP.ComponentTypeName]
+    local transforms = view._components[TransformCMP.ComponentTypeName]
     
     if not patrols or not movements or not transforms then return end
     local count = view._count

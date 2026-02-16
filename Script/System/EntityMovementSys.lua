@@ -28,8 +28,9 @@ function EntityMovementSys:tick(deltaTime)
     MOD_BaseSystem.tick(self, deltaTime)
     
     local view = self:getComponentsView()
-    local movements = view._components[MovementCMP.ComponentTypeID]
-    local transforms = view._components[TransformCMP.ComponentTypeID]
+    -- CHANGE: Use ComponentTypeName instead of ComponentTypeID
+    local movements = view._components[MovementCMP.ComponentTypeName]
+    local transforms = view._components[TransformCMP.ComponentTypeName]
     
     if not movements or not transforms then return end
     

@@ -91,6 +91,7 @@ Refactor the current ECS system management to introduce a central `World` single
 -   **View Acquisition**: Systems must obtain their `ComponentsView` exactly once during initialization in `System:new` by passing their requirement descriptor to `World:getComponentsView(requirements)`. The System then stores this View for its lifetime.
 -   **Structure of Arrays (SoA)**:
     -   The View maintains parallel arrays for each requested component type.
+    -   **Keying**: Arrays are accessed via **Component Name** strings (e.g., `"DrawableCMP"`), not Type IDs. This ensures consistency with `BaseSystem` requirement declarations.
     -   Index `i` in all arrays corresponds to the same Entity. **Order is significant** (e.g., for hierarchical updates).
     -   For optional components, if the Entity lacks that component, the array stores a **Shared Global Sentinel** (e.g., `ComponentsView.EMPTY`, wrapped as `ReadOnly` in debug) instead of `nil` or new tables. This prevents memory churn and ensures correct Lua array length semantics.
 -   **View Creation & Sharing**:

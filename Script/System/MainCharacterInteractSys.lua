@@ -1,6 +1,7 @@
 
 local MOD_BaseSystem = require('BaseSystem').BaseSystem
 local MainCharacterControllerCMP = require('Component.MainCharacterControllerCMP').MainCharacterControllerCMP
+local CharacterControlCommand = require('Component.MainCharacterControllerCMP').CharacterControlCommand
 local MovementCMP = require('Component.MovementCMP').MovementCMP
 
 --- 控制主角交互的逻辑
@@ -32,8 +33,9 @@ function MainCharacterInteractSys:tick(deltaTime)
     MOD_BaseSystem.tick(self, deltaTime)
     
     local view = self:getComponentsView()
-    local mainCharCtrls = view._components[MainCharacterControllerCMP.ComponentTypeID]
-    local movements = view._components[MovementCMP.ComponentTypeID]
+    -- CHANGE: Use ComponentTypeName instead of ComponentTypeID
+    local mainCharCtrls = view._components[MainCharacterControllerCMP.ComponentTypeName]
+    local movements = view._components[MovementCMP.ComponentTypeName]
     
     if not mainCharCtrls or not movements then return end
     
@@ -50,19 +52,18 @@ function MainCharacterInteractSys:tick(deltaTime)
         -- If self._userInteractController is set, we COULD update it here to move logic from main.lua.
         -- But for minimal invasion, we keep only consumption logic.
         
-        local controlCommands = mainCharCtrlCmp:getControlCommands()
         -- 处理移动命令
         local moveDir = {x = 0.0, y = 0.0}
-        if controlCommands[MainCharacterControllerCMP.CharacterControlCommand.MoveForward] == true then
+        if mainCharCtrlCmp:doesCommandIsTriggered_const(CharacterControlCommand.MoveForward) then
             moveDir.y = moveDir.y - 1.0
         end
-        if controlCommands[MainCharacterControllerCMP.CharacterControlCommand.MoveBackward] == true then
+        if mainCharCtrlCmp:doesCommandIsTriggered_const(CharacterControlCommand.MoveBackward) then
             moveDir.y = moveDir.y + 1.0
         end
-        if controlCommands[MainCharacterControllerCMP.CharacterControlCommand.MoveLeft] == true then
+        if mainCharCtrlCmp:doesCommandIsTriggered_const(CharacterControlCommand.MoveLeft) then
             moveDir.x = moveDir.x - 1.0
         end
-        if controlCommands[MainCharacterControllerCMP.CharacterControlCommand.MoveRight] == true then
+        if mainCharCtrlCmp:doesCommandIsTriggered_const(CharacterControlCommand.MoveRight) then
             moveDir.x = moveDir.x + 1.0
         end
         -- 归一化moveDir

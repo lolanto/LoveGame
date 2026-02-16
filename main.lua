@@ -77,7 +77,7 @@ function love.load()
     player:boundComponent(require('Component.CameraCMP').CameraCMP:new())
     player:boundComponent(
         require('Component.PhysicCMP').PhysicCMP:new(
-            physicSys:getWorld(),
+            physicSys:getPhysicsWorld(),
             {
                 shape = require('Component.PhysicCMP').Shape.static.Rectangle(1, 1, 0, 0, 0, 1),
                 fixedRotation = true
@@ -139,8 +139,6 @@ function love.draw()
     
     local world = require('World').World.static.getInstance()
     world:draw()
-    
-    -- require('World').World.static.getInstance():getSystem('PhysicVisualizeSys'):draw()
 end
 
 function love.mousepressed(x, y, button, istouch, presses)
