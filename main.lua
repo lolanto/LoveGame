@@ -24,44 +24,44 @@ function love.load()
     MUtils.RegisterModule("Main", "INFO", "DEBUG")
     
     local MOD_Entity = require('Entity')
-    local world = require('Script.World').getInstance()
+    local world = require('World').getInstance()
     
     -- Register Systems
     local function reg(sys) world:registerSystem(sys) end
     
-    local TransformUpdateSys = require('Script.System.TransformUpdateSys').TransformUpdateSys
+    local TransformUpdateSys = require('System.TransformUpdateSys').TransformUpdateSys
     reg(TransformUpdateSys:new(world))
     
-    local MainCharacterInteractSys = require('Script.System.MainCharacterInteractSys').MainCharacterInteractSys
+    local MainCharacterInteractSys = require('System.MainCharacterInteractSys').MainCharacterInteractSys
     local mainCharSys = MainCharacterInteractSys:new(world)
     mainCharSys:setupUserInteractController(userInteractController)
     reg(mainCharSys)
     
-    reg(require('Script.System.Gameplay.PatrolSys').PatrolSys:new(world))
-    reg(require('Script.System.EntityMovementSys').EntityMovementSys:new(world))
-    reg(require('Script.System.CameraSetupSys').CameraSetupSys:new(world))
-    reg(require('Script.System.DisplaySys').DisplaySys:new(world))
+    reg(require('System.Gameplay.PatrolSys').PatrolSys:new(world))
+    reg(require('System.EntityMovementSys').EntityMovementSys:new(world))
+    reg(require('System.CameraSetupSys').CameraSetupSys:new(world))
+    reg(require('System.DisplaySys').DisplaySys:new(world))
     
-    local PhysicSys = require('Script.System.PhysicSys').PhysicSys
+    local PhysicSys = require('System.PhysicSys').PhysicSys
     local physicSys = PhysicSys:new(world)
     reg(physicSys)
-    reg(require('Script.System.PhysicSys').PhysicVisualizeSys:new(world))
+    reg(require('System.PhysicSys').PhysicVisualizeSys:new(world))
     
-    local TriggerSys = require('Script.System.Gameplay.TriggerSys').TriggerSys
+    local TriggerSys = require('System.Gameplay.TriggerSys').TriggerSys
     local triggerSys = TriggerSys:new(world)
     triggerSys:setPhysicSys(physicSys)
     reg(triggerSys)
     
-    local BlackHoleSys = require('Script.System.Gameplay.BlackHoleSys').BlackHoleSys
+    local BlackHoleSys = require('System.Gameplay.BlackHoleSys').BlackHoleSys
     local blackHoleSys = BlackHoleSys:new(world)
     reg(blackHoleSys)
     
-    local TimeRewindSys = require('Script.System.Gameplay.TimeRewindSys').TimeRewindSys
+    local TimeRewindSys = require('System.Gameplay.TimeRewindSys').TimeRewindSys
     local timeRewindSys = TimeRewindSys:new(world)
     timeRewindSys:setPhysicsWorld(physicSys:getPhysicsWorld()) 
     reg(timeRewindSys)
     
-    local TimeDilationSys = require('Script.System.Gameplay.TimeDilationSys').TimeDilationSys
+    local TimeDilationSys = require('System.Gameplay.TimeDilationSys').TimeDilationSys
     local timeDilationSys = TimeDilationSys:new(world)
     timeDilationSys:setTimeRewindSys(timeRewindSys)
     reg(timeDilationSys)
@@ -107,7 +107,7 @@ function love.load()
     world:setMainCamera(entityCam)
 
     -- [Phase 4 Verification] Uncomment to run ECS Stress Tests
-    -- require('Script.Tests.TestECSWorkflow').run()
+    -- require('Tests.TestECSWorkflow').run()
 
     local LevelManager = require('LevelManager').LevelManager
     LevelManager.static.getInstance():requestLoadLevel('Level1')
@@ -122,7 +122,7 @@ function postUpdate()
 end
 
 function love.update(deltaTime)
-    local world = require('Script.World').getInstance()
+    local world = require('World').getInstance()
     
     require('MessageCenter').MessageCenter.static.getInstance():dispatch()
 
@@ -140,10 +140,10 @@ function love.draw()
         love.graphics.replaceTransform(renderEnv:getCameraProj())
     end
     
-    local world = require('Script.World').getInstance()
+    local world = require('World').getInstance()
     world:draw()
     
-    -- require('Script.World').getInstance():getSystem('PhysicVisualizeSys'):draw()
+    -- require('World').getInstance():getSystem('PhysicVisualizeSys'):draw()
 end
 
 function love.mousepressed(x, y, button, istouch, presses)

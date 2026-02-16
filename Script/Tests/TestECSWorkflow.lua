@@ -1,5 +1,5 @@
 local MUtils = require('MUtils')
-local World = require('Script.World').World
+local World = require('World').World
 local Entity = require('Entity')
 local ComponentsView = require('ComponentsView')
 
@@ -10,7 +10,7 @@ function TestECSWorkflow.run()
     print("Running ECS Phase 4 Manual Verification Tests")
     print("====================================")
 
-    local worldProxy = require('Script.World').getInstance()
+    local worldProxy = require('World').getInstance()
     -- Reset world for testing? Or just use current state?
     -- Resetting might be safer.
     if worldProxy.init then worldProxy:init() end

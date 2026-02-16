@@ -1,5 +1,5 @@
 local ReadOnly = require('utils.ReadOnly')
-local Config = require('Script.Config')
+local Config = require('Config')
 
 ---@class ComponentsView
 ---@field _viewKey string

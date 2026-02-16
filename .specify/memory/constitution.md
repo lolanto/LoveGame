@@ -66,6 +66,8 @@ Templates to Update:
 **Safety & Clarity over "Cleverness".**
 *   **No Global Variables** leaking into the global namespace.
 *   **Explicit Require**: Dependencies must be explicitly required in the file scope.
+    *   **Require Paths**: The script search path includes `./Script` and `./Script/utils`. Do NOT include `Script.` or `utils.` prefixes.
+    *   Example: Use `require("World")` instead of `require("Script.World")`. Use `require("ReadOnly")` instead of `require("Script.utils.ReadOnly")` or `require("utils.ReadOnly")`.
 *   **Type Annotations**: Use EmmyLua/LuaLS annotations (`--- @class`, `--- @type`) to maintain code intelligence/maintainability.
 *   **Defensive Checks**: Use `assert` to validate critical state assumptions (e.g., Singleton existence, Component requirement).
 

@@ -113,7 +113,7 @@ function LevelManager:_instantiateComponent(compData)
     -- Factory Logic
     if compData.type == 'PhysicCMP' then
         -- Dependency Injection: PhysicWorld
-        local world = require('Script.World').getInstance()
+        local world = require('World').getInstance()
         local physicsSys = world:getSystem('PhysicSys')
         if not physicsSys then
             MUtils.Error(LOG_MODULE, "PhysicSys not found during component instantiation")
@@ -285,7 +285,7 @@ function LevelManager:_loadLevelFromData(dataPath, levelInstance)
     end
     
     if data.entities then
-        local world = require('Script.World').getInstance()
+        local world = require('World').getInstance()
         for _, entityDesc in ipairs(data.entities) do
              local entity = self:_buildEntity(entityDesc, nil, actions)
              table.insert(entities, entity)
@@ -345,7 +345,7 @@ function LevelManager:requestLoadLevel(levelIdentifier)
         end
         
         function VirtualLevel:unload()
-            local world = require('Script.World').getInstance()
+            local world = require('World').getInstance()
              local entitiesToRemove = {}
             for _, entity in ipairs(self._levelEntities) do
                 entity:onLeaveLevel()
@@ -412,7 +412,7 @@ end
 
 function LevelManager:tick()
     if #self._pendingSpawnEntities > 0 then
-        local world = require('Script.World').getInstance()
+        local world = require('World').getInstance()
         for i = 1, #self._pendingSpawnEntities do
             local entity = self._pendingSpawnEntities[i]
             if self._currentLevel and self._currentLevel.addEntity then

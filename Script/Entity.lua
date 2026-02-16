@@ -205,12 +205,12 @@ function Entity:getComponent_const(componentType)
     -- try exact id first
     local exact = self._components[cmpID]
     if exact ~= nil then
-        return require("utils.ReadOnly").makeReadOnly(exact)
+        return require("ReadOnly").makeReadOnly(exact)
     end
     -- 如果没有精确匹配，则将这个数字视作父类的ID，查找派生类组件
     for _, comp in pairs(self._components) do
         if comp ~= nil and comp:isInstanceOf(cmpName) then
-            return require("utils.ReadOnly").makeReadOnly(comp)
+            return require("ReadOnly").makeReadOnly(comp)
         end
     end
     return nil
@@ -294,7 +294,7 @@ function Entity:getParent()
 end
 
 function Entity:getParent_const()
-    return require("utils.ReadOnly").makeReadOnly(self._parentEntity)
+    return require("ReadOnly").makeReadOnly(self._parentEntity)
 end
 
 --- 获取子Entity列表
