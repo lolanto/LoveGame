@@ -3,6 +3,10 @@ local MUtils = require('MUtils')
 local ISubscriber = require('EventInterfaces').ISubscriber
 local MultiInheritHelper = require('MultiInheritHelper').MultiInheritHelper
 
+local MessageCenter = require('MessageCenter').MessageCenter
+local Event_RewindStarted = MessageCenter.static.getInstance():registerEvent("Event_RewindStarted")
+local Event_RewindEnded = MessageCenter.static.getInstance():registerEvent("Event_RewindEnded")
+
 ---@class TimeRewindSys : MOD_BaseSystem, ISubscriber
 ---@field _isRewinding boolean
 ---@field _history table[] -- stack of snapshots
@@ -89,16 +93,22 @@ end
 --- @return nil
 function TimeRewindSys:enableRewind(enable)
     local TimeManager = require('TimeManager').TimeManager.static.getInstance()
+    local messageCenter = require('MessageCenter').MessageCenter.static.getInstance()
+
     if enable and not self._isRewinding then
         self._isRewinding = true
         -- 进入时间回溯的瞬间，强制重置时间速率为正常值
         -- 这样可以防止回溯结束后玩家仍然处于慢动作状态，同时也明确了回溯操作本身是“打破”时间流的行为
         TimeManager:setTimeScale(1.0)
+        
+        messageCenter:broadcast(self, Event_RewindStarted, nil)
     elseif not enable and self._isRewinding then
         self._isRewinding = false
         self:truncateHistory()
         -- 退出回溯时，再次确保时间速率为1.0（虽然进入时已设置，但这符合"回溯结束后保持默认"的预期）
         TimeManager:setTimeScale(1.0)
+
+        messageCenter:broadcast(self, Event_RewindEnded, nil)
     end
 end
 
@@ -271,4 +281,8 @@ function TimeRewindSys.onLeaveLevel(subscriberContext, broadcasterContext)
     self._currentRecordTime = 0
 end
 
-return { TimeRewindSys = TimeRewindSys }
+return { 
+    TimeRewindSys = TimeRewindSys,
+    Event_RewindStarted = Event_RewindStarted,
+    Event_RewindEnded = Event_RewindEnded
+}

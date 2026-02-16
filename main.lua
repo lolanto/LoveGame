@@ -24,7 +24,7 @@ function love.load()
     MUtils.RegisterModule("Main", "INFO", "DEBUG")
     
     local MOD_Entity = require('Entity')
-    local world = require('World').getInstance()
+    local world = require('World').World.static.getInstance()
     
     -- Register Systems
     local function reg(sys) world:registerSystem(sys) end
@@ -49,7 +49,6 @@ function love.load()
     
     local TriggerSys = require('System.Gameplay.TriggerSys').TriggerSys
     local triggerSys = TriggerSys:new(world)
-    triggerSys:setPhysicSys(physicSys)
     reg(triggerSys)
     
     local BlackHoleSys = require('System.Gameplay.BlackHoleSys').BlackHoleSys
@@ -58,12 +57,10 @@ function love.load()
     
     local TimeRewindSys = require('System.Gameplay.TimeRewindSys').TimeRewindSys
     local timeRewindSys = TimeRewindSys:new(world)
-    timeRewindSys:setPhysicsWorld(physicSys:getPhysicsWorld()) 
     reg(timeRewindSys)
     
     local TimeDilationSys = require('System.Gameplay.TimeDilationSys').TimeDilationSys
     local timeDilationSys = TimeDilationSys:new(world)
-    timeDilationSys:setTimeRewindSys(timeRewindSys)
     reg(timeDilationSys)
 
     local image = love.graphics.newImage("Resources/debug_characters.png")
@@ -122,7 +119,7 @@ function postUpdate()
 end
 
 function love.update(deltaTime)
-    local world = require('World').getInstance()
+    local world = require('World').World.static.getInstance()
     
     require('MessageCenter').MessageCenter.static.getInstance():dispatch()
 
@@ -140,10 +137,10 @@ function love.draw()
         love.graphics.replaceTransform(renderEnv:getCameraProj())
     end
     
-    local world = require('World').getInstance()
+    local world = require('World').World.static.getInstance()
     world:draw()
     
-    -- require('World').getInstance():getSystem('PhysicVisualizeSys'):draw()
+    -- require('World').World.static.getInstance():getSystem('PhysicVisualizeSys'):draw()
 end
 
 function love.mousepressed(x, y, button, istouch, presses)

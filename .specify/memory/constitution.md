@@ -59,6 +59,7 @@ Templates to Update:
 ## Development Workflow
 
 ### Code Standards
+*   **Adhere to the Code Style Guide**: All code must follow the patterns defined in [code_style.md](./code_style.md), including Singleton implementation, file structure, and naming conventions.
 *   **Naming**: PascalCase for Classes/Files, camelCase for variables/functions.
 *   **Logging**: Use `MUtils.RegisterModule` and structured logging. `print` is forbidden.
 *   **File Structure**: One Class per File. Return the Class table at the end of the file.

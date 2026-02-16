@@ -13,16 +13,25 @@ local ComponentsView = require('ComponentsView')
 ---@field _mainCamera Entity|nil
 local World = {}
 World.__index = World
+World.static = {}
+World.static.instance = nil
 
-local _currentInstance = nil
-
--- Singleton Access
-function World.getInstance()
-    if not _currentInstance then
-        _currentInstance = setmetatable({}, World)
-        _currentInstance:init()
+function World.static.getInstance()
+    if World.static.instance == nil then
+        World.static.instance = World:new()
     end
-    return _currentInstance
+    return World.static.instance
+end
+
+function World:new()
+    assert(World.static.instance == nil, "World is a singleton!")
+    local instance = setmetatable({}, World)
+    instance:init()
+    return instance
+end
+
+function World:reset()
+    self:init()
 end
 
 function World:init()
