@@ -116,6 +116,12 @@ function TimeRewindSys:setRewindSpeedMultiplier(multiplier)
     self._rewindSpeedMultiplier = multiplier
 end
 
+function TimeRewindSys:_releaseSnapshot(snapshotData)
+    for entity, _ in pairs(snapshotData) do
+        entity:release()
+    end
+end
+
 function TimeRewindSys:record(deltaTime)
     self._currentRecordTime = self._currentRecordTime + deltaTime
 
@@ -161,9 +167,7 @@ function TimeRewindSys:record(deltaTime)
     -- Cleanup old history based on duration
     while #self._history > 0 and (self._currentRecordTime - self._history[1].time > self._maxHistoryDuration) do
         local oldSnapshot = self._history[1].data
-        for entity, _ in pairs(oldSnapshot) do
-            entity:release()
-        end
+        self:_releaseSnapshot(oldSnapshot)
         table.remove(self._history, 1)
     end
 end
@@ -174,9 +178,7 @@ function TimeRewindSys:truncateHistory()
     for i = #self._history, 1, -1 do
         if self._history[i].time > self._currentRecordTime then
             local futureSnapshot = self._history[i].data
-            for entity, _ in pairs(futureSnapshot) do
-                entity:release()
-            end
+            self:_releaseSnapshot(futureSnapshot)
             table.remove(self._history, i)
         else
             break
@@ -220,39 +222,61 @@ function TimeRewindSys:rewind(deltaTime)
         t = (self._currentRecordTime - snapshotA.time) / (snapshotB.time - snapshotA.time)
     end
     
-    -- Iterate all tracked entities to handle enable/disable state
+    local world = require('World').World.static.getInstance() 
+    
+    -- Set of entites currently in World (as tracked by this system)
+    local worldEntitiesSet = {}
     for _, entity in ipairs(self._rewindEntities) do
-        local entitySnapshotA = snapshotA.data[entity]
-        local entitySnapshotB = snapshotB.data[entity]
-        
-        if entitySnapshotA then
-            -- Entity existed at this time: Enable it
-            if entity.setEnable then entity:setEnable(true) end
-            if entity.setVisible then entity:setVisible(true) end
-            
-            for typeID, stateA in pairs(entitySnapshotA) do
-                local component = entity._components[typeID]
-                local stateB = nil
-                if entitySnapshotB then
-                    stateB = entitySnapshotB[typeID]
-                end
+        worldEntitiesSet[entity] = true
+    end
 
-                if component and stateB then
-                     if component.lerpRewindState then
-                        component:lerpRewindState(stateA, stateB, t)
-                     elseif component.restoreRewindState then
-                        component:restoreRewindState(stateA)
-                     end
-                elseif component and component.restoreRewindState then
-                     component:restoreRewindState(stateA)
-                end
-            end
+    local snapshotEntities = snapshotA.data
+    local nextRewindEntities = {}
+
+    -- 1. Remove entities that are in the World but not in the past snapshot
+    for _, entity in ipairs(self._rewindEntities) do
+        if not snapshotEntities[entity] then
+            -- Case 2: Entity added in present, not in past -> Remove
+            world:removeEntity(entity)
         else
-            -- Entity did not exist at this time: Disable it
-            if entity.setEnable then entity:setEnable(false) end
-            if entity.setVisible then entity:setVisible(false) end
+            table.insert(nextRewindEntities, entity)
         end
     end
+    
+    -- 2. Add entities that are in the past snapshot but not in the World
+    --    And restore state for ALL entities in the snapshot
+    for entity, entitySnapshotA in pairs(snapshotEntities) do
+        if not worldEntitiesSet[entity] then
+            -- Case 1: Entity removed in present, exists in past -> Add
+            world:addEntity(entity)
+            table.insert(nextRewindEntities, entity)
+        end
+        
+        local entitySnapshotB = snapshotB.data[entity]
+        
+        -- Case 3: Restore state
+        -- Entity existed at this time: Enable it
+        if entity.setEnable then entity:setEnable(true) end
+        if entity.setVisible then entity:setVisible(true) end
+        
+        for typeID, stateA in pairs(entitySnapshotA) do
+            local component = entity._components[typeID]
+            local stateB = nil
+            if entitySnapshotB then
+                stateB = entitySnapshotB[typeID]
+            end
+
+            if component then
+                 if stateB and component.lerpRewindState then
+                    component:lerpRewindState(stateA, stateB, t)
+                 elseif component.restoreRewindState then
+                    component:restoreRewindState(stateA)
+                 end
+            end
+        end
+    end
+
+    self._rewindEntities = nextRewindEntities
 end
 
 function TimeRewindSys:postProcess()
@@ -272,9 +296,7 @@ function TimeRewindSys.onLeaveLevel(subscriberContext, broadcasterContext)
     
     -- [Phase 3] Clear history and release all retained entities
     for _, historyItem in ipairs(self._history) do
-        for entity, _ in pairs(historyItem.data) do
-            entity:release()
-        end
+        self:_releaseSnapshot(historyItem.data)
     end
     
     self._history = {}
