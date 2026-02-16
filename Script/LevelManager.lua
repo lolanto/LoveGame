@@ -287,17 +287,6 @@ function LevelManager:_loadLevelFromData(dataPath, levelInstance)
     if data.entities then
         local world = require('Script.World').getInstance()
         for _, entityDesc in ipairs(data.entities) do
-             -- Recursive world add?
-             local function addToWorld(e)
-                 world:addEntity(e)
-                 local children = e:getChildren()
-                 if children then
-                    for _, child in ipairs(children) do
-                        addToWorld(child)
-                    end
-                 end
-             end
-
              local entity = self:_buildEntity(entityDesc, nil, actions)
              table.insert(entities, entity)
              
@@ -305,7 +294,7 @@ function LevelManager:_loadLevelFromData(dataPath, levelInstance)
              if levelInstance and levelInstance.addEntity then
                  levelInstance:addEntity(entity)
              end
-             addToWorld(entity)
+             world:addEntity(entity)
         end
     end
     
@@ -361,14 +350,6 @@ function LevelManager:requestLoadLevel(levelIdentifier)
             for _, entity in ipairs(self._levelEntities) do
                 entity:onLeaveLevel()
                 world:removeEntity(entity)
-                
-                -- Check children
-                local children = entity:getChildren()
-                if children then
-                    for _, child in ipairs(children) do
-                        world:removeEntity(child)
-                    end
-                end
             end
             self._levelEntities = {}
         end

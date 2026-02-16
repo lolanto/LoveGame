@@ -32,9 +32,20 @@ function World:init()
     self._dirtyEntities = {}
     self._pendingAdds = {}
     self._pendingRemoves = {}
-    self._pendingDestruction = {}
+    self._pendingDestruction = {} -- Zombie State list
+    self._collisionEvents = {} -- T037 Collision Events
     self._mainCharacter = nil
     self._mainCamera = nil
+end
+
+--- Mark an entity as needing archetype re-evaluation
+---@param entity Entity
+function World:markEntityDirty(entity)
+    local id = entity:getID_const()
+    -- Only track if managed/active
+    if not self._dirtyEntities[id] then
+        self._dirtyEntities[id] = entity
+    end
 end
 
 --- Retrieves or creates a ComponentsView for the given requirements
@@ -73,29 +84,147 @@ function World:unregisterSystem(system)
 end
 
 function World:addEntity(entity)
-    local id = entity:getID_const()
-    if self._entities[id] then return end
-    self._entities[id] = entity
-    
-    -- Notify all views
-    for _, view in pairs(self._views) do
-        view:add(entity)
+    -- Assign World reference immediately so component changes during setup are tracked (if any)
+    -- Though dirty logic only processes if entity is in _entities list, which happens in clean.
+    entity:setWorld(self)
+
+    -- Instead of adding immediately, we queue it
+    table.insert(self._pendingAdds, entity)
+
+    local children = entity:getChildren_const()
+    for _, child in pairs(children) do
+        self:addEntity(child) -- Recursively queue children for addition
     end
 end
 
+--- Recursively requests removal of entity and its children
+---@param entity Entity
 function World:removeEntity(entity)
-    local id = entity:getID_const()
-    if not self._entities[id] then return end
-    self._entities[id] = nil
+    -- 1. Mark recursively
+    entity:setMarkedForDestruction(true)
+    table.insert(self._pendingRemoves, entity)
     
-    -- Notify all views
-    for _, view in pairs(self._views) do
-        view:remove(entity)
+    -- 2. Recurse children
+    local children = entity:getChildren_const()
+    for _, child in pairs(children) do
+        self:removeEntity(child)
     end
 end
 
-function World:update(dt) end
-function World:draw() end
+--- Frame clean-up phase: Add queued entities, Remove marked ones
+function World:clean()
+    -- 1. Process Pending Adds
+    for _, entity in ipairs(self._pendingAdds) do
+        local id = entity:getID_const()
+        if not self._entities[id] then
+            self._entities[id] = entity
+            -- Notify all views
+            for _, view in pairs(self._views) do
+                view:add(entity)
+            end
+        end
+    end
+    self._pendingAdds = {}
+
+    -- 2. Process Dirty Entities (Deferred Archetype Updates)
+    for id, entity in pairs(self._dirtyEntities) do
+        -- Only process if entity is still tracked and fully setup
+        local isPendingRemove = false
+        -- Optimization: Could check pendingRemoves set, but cleaner to just check if valid
+        if self._entities[id] and not entity:isMarkedForDestruction_const() then
+             entity:setIsArchDirty(false)
+             
+             for _, view in pairs(self._views) do
+                 -- Re-evaluate membership for this view
+                 -- 1. Try to remove (if it was there and now invalid, or valid but needs refresh)
+                 -- 2. Try to add (if it fits requirements)
+                 view:remove(entity)
+                 view:add(entity)
+             end
+        end
+    end
+    self._dirtyEntities = {}
+
+    -- 3. Process Pending Removes
+    for _, entity in ipairs(self._pendingRemoves) do
+        local id = entity:getID_const()
+        -- Only process if it is in the world
+        if self._entities[id] then
+            -- Remove from main active list
+            self._entities[id] = nil
+            
+            -- Remove from all Views (Systems should no longer see it)
+            for _, view in pairs(self._views) do
+                view:remove(entity)
+            end
+            
+            -- Move to Pending Destruction (Zombie State check)
+            table.insert(self._pendingDestruction, entity)
+        end
+    end
+    self._pendingRemoves = {}
+    
+    -- 4. Garbage Collection Tick for Zombies
+    local rw_index = 1
+    for i = 1, #self._pendingDestruction do
+        local entity = self._pendingDestruction[i]
+        
+        if entity:getRefCount() <= 0 then
+            -- Safe to destroy completely
+            if entity.destroy then
+                entity:destroy() -- Release resources if any
+            end
+            -- Do not keep in list
+        else
+            -- Still held by something (TimeRewind?), keep in zombie list
+            if rw_index ~= i then
+                self._pendingDestruction[rw_index] = entity
+            end
+            rw_index = rw_index + 1
+        end
+    end
+    -- Nil out remaining slots to help GC
+    for i = rw_index, #self._pendingDestruction do
+        self._pendingDestruction[i] = nil
+    end
+    
+    -- 5. Clear Collision Events
+    self._collisionEvents = {}
+end
+
+--- Retrieves the complete list of valid entities (including disabled)
+---@return Entity[]
+function World:getAllManagedEntities()
+    -- Performance note: This recreates table every call. 
+    -- If called frequently, we might cache this and invalidate on add/remove.
+    local list = {}
+    for _, entity in pairs(self._entities) do
+        table.insert(list, entity)
+    end
+    return list
+end
+
+--- Retrieves the list of currently ENABLED entities
+---@return Entity[]
+function World:getActiveEntities()
+    local list = {}
+    for _, entity in pairs(self._entities) do
+        if entity:isEnable_const() then
+            table.insert(list, entity)
+        end
+    end
+    return list
+end
+
+---@param event table {a:Entity, b:Entity, type:string, contact:Contact}
+function World:recordCollisionEvent(event)
+    table.insert(self._collisionEvents, event)
+end
+
+---@return table[]
+function World:getCollisionEvents()
+    return self._collisionEvents or {}
+end
 
 ---@return table<string, Entity>
 function World:getAllEntities()
@@ -126,6 +255,87 @@ end
 ---@return Entity|nil
 function World:getMainCamera()
     return self._mainCamera
+end
+
+function World:update(dt, userInteractController)
+    self:clean()
+
+    -- Auto-detect Main Character/Camera if missing (Legacy support)
+    if not self._mainCharacter or not self._mainCamera then
+        for _, entity in pairs(self._entities) do
+             if not self._mainCharacter and entity:hasComponent('MainCharacterControllerCMP') then
+                 self._mainCharacter = entity
+             end
+             if not self._mainCamera and entity:hasComponent('CameraCMP') then
+                 self._mainCamera = entity
+             end
+        end
+    end
+
+    local timeRewindSys = self:getSystem('TimeRewindSys')
+    local blackHoleSys = self:getSystem('BlackHoleSys')
+    local timeDilationSys = self:getSystem('TimeDilationSys')
+    local mainCharSys = self:getSystem('MainCharacterInteractSys')
+    local patrolSys = self:getSystem('PatrolSys')
+    local entityMovementSys = self:getSystem('EntityMovementSys')
+    local transformSys = self:getSystem('TransformUpdateSys')
+    local physicSys = self:getSystem('PhysicSys')
+    local triggerSys = self:getSystem('TriggerSys')
+    local cameraSetupSys = self:getSystem('CameraSetupSys')
+    
+    local mainCharacterEntity = self:getMainCharacter()
+    if mainCharacterEntity ~= nil then
+        local mainCharCtrlCmp = mainCharacterEntity:getComponent('MainCharacterControllerCMP')
+        if mainCharCtrlCmp ~= nil then
+            mainCharCtrlCmp:update(dt, userInteractController)
+        end
+    end
+    
+    if userInteractController then
+        timeDilationSys:processUserInput(userInteractController)
+        blackHoleSys:processUserInput(userInteractController)
+        timeRewindSys:processUserInput(userInteractController)
+    end
+
+    -- Time Rewind Collection (Snapshot)
+    timeRewindSys:preCollect()
+    local managedEntities = self:getAllManagedEntities()
+    for _, entity in ipairs(managedEntities) do
+        timeRewindSys:collect(entity)
+    end
+
+    timeDilationSys:tick(dt)
+    timeRewindSys:tick(dt)
+    
+    if timeRewindSys:getIsRewinding() then
+        -- Review Mode
+        transformSys:tick(dt)
+        timeRewindSys:postProcess()
+    else
+        mainCharSys:tick(dt)
+        patrolSys:tick(dt)
+        blackHoleSys:tick(dt)
+        entityMovementSys:tick(dt)
+        transformSys:tick(dt)
+
+        physicSys:tick(dt)
+        transformSys:tick(dt) -- Re-update after physics
+        triggerSys:tick(dt)
+    end
+    
+    local displaySys = self:getSystem('DisplaySys')
+    if displaySys then
+        displaySys:tick(dt)
+    end
+    
+    cameraSetupSys:tick(dt)
+end
+
+function World:draw()
+    local displaySys = self:getSystem('DisplaySys')
+    if displaySys then
+        displaySys:draw()
+    end
 end
 
 return { World = World }

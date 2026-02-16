@@ -14,25 +14,14 @@ function TriggerSys:new(world)
     instance:addComponentRequirement(TriggerCMP.ComponentTypeID, ComponentRequirementDesc:new(true, false))
     instance:initView()
     
-    instance._physicSys = nil
+    -- instance._physicSys = nil -- Deprecated
     return instance
-end
-
---- 设置物理系统引用，以便获取碰撞事件
---- @param physicSys PhysicSys
-function TriggerSys:setPhysicSys(physicSys)
-    self._physicSys = physicSys
 end
 
 function TriggerSys:tick(deltaTime)
     MOD_BaseSystem.tick(self, deltaTime)
 
-    if not self._physicSys then 
-        -- 如果没有设置物理系统，就无法工作
-        return 
-    end
-
-    local events = self._physicSys:getCollisionEvents()
+    local events = self._world:getCollisionEvents()
     if not events then return end
 
     for _, event in ipairs(events) do

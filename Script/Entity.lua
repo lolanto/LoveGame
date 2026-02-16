@@ -71,7 +71,10 @@ end
 
 --- 设置实体是否激活
 function Entity:setEnable(value)
-    self._isEnable = value
+    if self._isEnable ~= value then
+        self._isEnable = value
+        self:setIsArchDirty(true)
+    end
 end
 
 function Entity:isEnable_const()
@@ -138,6 +141,7 @@ function Entity:boundComponent(inputComponent)
     self._components[typeID] = inputComponent
     inputComponent._entity = self
     inputComponent:onBound(self)
+    self:setIsArchDirty(true)
 end
 
 --- 绑定或者替换一个已有的组件
@@ -154,10 +158,12 @@ function Entity:boundOrReplaceComponent(inputComponent)
         self._components[typeID] = inputComponent
         oldComponent._entity = nil
         inputComponent:onBound(self)
+        self:setIsArchDirty(true)
         return oldComponent
     else
         self._components[typeID] = inputComponent
         inputComponent:onBound(self)
+        self:setIsArchDirty(true)
         return nil
     end
     return nil
@@ -173,6 +179,7 @@ function Entity:unboundComponent(componentTypeID)
         self._components[componentTypeID] = nil
     end
     retComp._entity = nil
+    self:setIsArchDirty(true)
     return retComp
 end
 
@@ -333,6 +340,11 @@ end
 --- 离开关卡时的回调
 function Entity:onLeaveLevel()
     self._level = nil
+    self:destroy()
+end
+
+--- 彻底销毁实体，清理所有组件资源
+function Entity:destroy()
     --- 销毁所有组件
     for _, comp in pairs(self._components) do
         if comp ~= nil then
@@ -341,6 +353,19 @@ function Entity:onLeaveLevel()
         end
     end
     self._components = {}
+end
+
+--- [New ECS Architecture] Set the World reference
+function Entity:setWorld(world)
+    self._world = world
+end
+
+--- Set the dirty flag for archetype updates and notify World
+function Entity:setIsArchDirty(dirty)
+    self._isArchDirty = dirty
+    if dirty and self._world then
+        self._world:markEntityDirty(self)
+    end
 end
 
 return Entity

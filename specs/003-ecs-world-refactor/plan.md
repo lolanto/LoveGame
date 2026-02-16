@@ -115,8 +115,12 @@ Script/
         -   Implement `entity_to_index` map (Reverse Index) for O(1) entity lookup during removal.
         -   Implement removal via `table.remove` (shift) to preserve order, iterating to update `entity_to_index` for shifted elements.
     -   Create `World.lua` (Skeleton + Singleton logic + Dirty Queue).
-    -   Update `Entity.lua` with reference counting & dirty flags.
+    -   Update `Entity.lua` with reference counting & dirty flags (`isArchDirty`), ensuring component changes notify World.
     -   Implement `World:getComponentsView(componentRequirements)` which parses `_requiredComponentInfos`, generates a canonical View Key, and returns a cached/new View.
+    -   **Remediation (C1/C2)**: Implement missing deferred update logic:
+        -   Add `World:markEntityDirty(entity)` to register entities for update.
+        -   Update `Entity:boundComponent`, `unboundComponent`, `setEnable` to call `markEntityDirty`.
+        -   Update `World:clean()` to process `_dirtyEntities` (re-check active views against entity components).
 
 2.  **System Integration**:
     -   Update `BaseSystem.lua`:
@@ -129,7 +133,9 @@ Script/
 3.  **Lifecycle & Time Rewind**:
     -   Implement `World:addEntity`/`removeEntity` recursive logic (Add to Pending lists).
     -   Implement `World:clean()`: Process Pending Adds/Removes AND Dirty Archetypes.
-    -   Implement `World:getActiveEntityList()`: Return a cached list of non-destroyed entities for the current frame (optimized for Systems like TimeRewind that iterate all). Logic involves iterating all entities and checking `not entity:isDestroyed()`, returning a flat integer-indexed table.
+    -   (Updated) Implement Entity List APIs:
+        -   `World:getAllManagedEntities()`: Return complete list of entities (including disabled/zombies).
+        -   `World:getActiveEntities()`: Return filtered list of **Enabled** entities.
     -   Implement "Pending Destruction" queue and GC tick.
     -   Implement `World:recordCollisionEvent(event)`, `World:getCollisionEvents()`, and `World:clearCollisionEvents()` for transient frame-based event handling.
     -   Update `TimeRewindSys` to manipulate Entity ref counts.

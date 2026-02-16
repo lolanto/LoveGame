@@ -16,6 +16,11 @@ Refactor the current ECS system management to introduce a central `World` single
 ### Session 2026-02-15
 -   Q: Should `ComponentsView` updates (Add/Remove) be immediate or deferred? -> A: **Deferred**. Structural changes should apply at the start of the next Tick. Entities/Lists must carry "Dirty" flags so downstream Systems can detect invalidation if accessing mid-frame.
 -   Q: How to handle optional component holes in ComponentsView? -> A: **Shared Global Sentinel**. Use a single immutable empty table (e.g. `ComponentsView.EMPTY`) to avoid allocation overhead.
+### Session 2026-02-16
+-   Q: How to distinguish between all entities in memory and those participating in logic? -> A: **Managed vs Active**. 
+    -   **Managed Entities**: All entities owned by World (not yet destroyed).
+    -   **Active Entities**: Subset of Managed Entities that are currently **Enabled**.
+    -   API Update: `getAllManagedEntities()` returns full list; `getActiveEntities()` returns only enabled entities.
 
 
 ## User Scenarios
@@ -29,11 +34,14 @@ Refactor the current ECS system management to introduce a central `World` single
 
 ### 1. World Global Singleton
 -   **Central Management**: The `World` class must act as the singleton manager for:
-    -   All active Entities.
+    -   **Managed Entities**: All currently instantiated entities that have not been marked for immediate deletion (includes disabled entities).
+    -   **Active Entities**: The subset of Managed Entities that are currently **Enabled**.
     -   All active Systems.
     -   The Render Environment (`renderEnv`).
     -   Special global entities (e.g., `mainCharacterEntity`, `mainCameraEntity`).
 -   **Special Entity Access**:
+    -   `World:getAllManagedEntities()`: Returns the complete list of valid entities.
+    -   `World:getActiveEntities()`: Returns the list of enabled entities (for global iteration use cases).
     -   The `World` must provide specific accessors for key entities:
         -   `World:getMainCharacter()`: Returns the current player entity or nil.
         -   `World:setMainCharacter(entity)`: Sets the player entity.
@@ -48,11 +56,11 @@ Refactor the current ECS system management to introduce a central `World` single
 
 ### 2. Entity Management
 -   **Add Entity**:
-    -   `World:addEntity(entity)`: Adds an entity to the game world.
+    -   `World:addEntity(entity)`: Adds an entity to the `Managed` list.
     -   Must handle recursive addition of child entities.
     -   Must trigger updates to all relevant `ComponentsView`s (add entity's components to views if criteria matched).
 -   **Remove Entity**:
-    -   `World:removeEntity(entity)`: Marks an entity for removal.
+    -   `World:removeEntity(entity)`: Marks an entity for removal from the `Managed` list.
     -   Must handle recursive removal of child entities.
     -   Entity enters a "Pending Destruction" state/queue.
     -   Must trigger updates to all relevant `ComponentsView`s (remove entity's components from views).

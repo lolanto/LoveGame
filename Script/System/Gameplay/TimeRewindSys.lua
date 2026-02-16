@@ -137,6 +137,8 @@ function TimeRewindSys:record(deltaTime)
             
             if hasData then
                 snapshot[entity] = entitySnapshot
+                -- [Phase 3] Retain entity so it doesn't get destroyed while in history
+                entity:retain()
             end
         end
     end
@@ -148,6 +150,10 @@ function TimeRewindSys:record(deltaTime)
     
     -- Cleanup old history based on duration
     while #self._history > 0 and (self._currentRecordTime - self._history[1].time > self._maxHistoryDuration) do
+        local oldSnapshot = self._history[1].data
+        for entity, _ in pairs(oldSnapshot) do
+            entity:release()
+        end
         table.remove(self._history, 1)
     end
 end
@@ -157,6 +163,10 @@ function TimeRewindSys:truncateHistory()
     -- Since history is sorted by time
     for i = #self._history, 1, -1 do
         if self._history[i].time > self._currentRecordTime then
+            local futureSnapshot = self._history[i].data
+            for entity, _ in pairs(futureSnapshot) do
+                entity:release()
+            end
             table.remove(self._history, i)
         else
             break
@@ -249,6 +259,14 @@ end
 function TimeRewindSys.onLeaveLevel(subscriberContext, broadcasterContext)
     ---@type TimeRewindSys
     local self = subscriberContext
+    
+    -- [Phase 3] Clear history and release all retained entities
+    for _, historyItem in ipairs(self._history) do
+        for entity, _ in pairs(historyItem.data) do
+            entity:release()
+        end
+    end
+    
     self._history = {}
     self._currentRecordTime = 0
 end

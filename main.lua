@@ -106,6 +106,9 @@ function love.load()
     world:addEntity(entityCam)
     world:setMainCamera(entityCam)
 
+    -- [Phase 4 Verification] Uncomment to run ECS Stress Tests
+    -- require('Script.Tests.TestECSWorkflow').run()
+
     local LevelManager = require('LevelManager').LevelManager
     LevelManager.static.getInstance():requestLoadLevel('Level1')
 end
@@ -121,81 +124,13 @@ end
 function love.update(deltaTime)
     local world = require('Script.World').getInstance()
     
-    -- Cleanup destroyed entities
-    for id, entity in pairs(world:getAllEntities()) do
-        if entity:isDestroyed() then
-            world:removeEntity(entity)
-        end
-    end
-
     require('MessageCenter').MessageCenter.static.getInstance():dispatch()
 
     preUpdate(deltaTime)
     
     require('LevelManager').LevelManager.static.getInstance():tick()
     
-    -- Collect active entities for logic
-    local activeEntities = {}
-    -- Flat iteration is sufficient for snapshotting and general updates
-    for id, entity in pairs(world:getAllEntities()) do
-        if not entity:isDestroyed() then
-            -- Re-detect main character/camera if missing
-            if world:getMainCharacter() == nil and entity:hasComponent('MainCharacterControllerCMP') then
-                world:setMainCharacter(entity)
-            end
-            if world:getMainCamera() == nil and entity:hasComponent('CameraCMP') then
-                world:setMainCamera(entity)
-            end
-            table.insert(activeEntities, entity)
-        end
-    end
-    
-    local timeRewindSys = world:getSystem('TimeRewindSys')
-    local blackHoleSys = world:getSystem('BlackHoleSys')
-    
-    local mainCharacterEntity = world:getMainCharacter()
-    if mainCharacterEntity ~= nil then
-        local mainCharCtrlCmp = mainCharacterEntity:getComponent('MainCharacterControllerCMP')
-        if mainCharCtrlCmp ~= nil then
-            mainCharCtrlCmp:update(deltaTime, userInteractController)
-        end
-        -- BlackHoleSys now manages its own reference via World
-    end
-    
-    local timeDilationSys = world:getSystem('TimeDilationSys')
-    timeDilationSys:processUserInput(userInteractController)
-    blackHoleSys:processUserInput(userInteractController)
-    timeRewindSys:processUserInput(userInteractController)
-
-    -- Time Rewind Collection
-    timeRewindSys:preCollect()
-    for i = 1, #activeEntities do
-        timeRewindSys:collect(activeEntities[i])
-    end
-
-    timeDilationSys:tick(deltaTime)
-    timeRewindSys:tick(deltaTime)
-    
-    local transformSys = world:getSystem('TransformUpdateSys')
-    
-    if timeRewindSys:getIsRewinding() then
-        -- Review Mode: Skip logic/physics
-        transformSys:tick(deltaTime)
-        timeRewindSys:postProcess()
-    else
-        world:getSystem('MainCharacterInteractSys'):tick(deltaTime)
-        world:getSystem('PatrolSys'):tick(deltaTime)
-        blackHoleSys:tick(deltaTime)
-        world:getSystem('EntityMovementSys'):tick(deltaTime)
-        transformSys:tick(deltaTime)
-
-        world:getSystem('PhysicSys'):tick(deltaTime)
-        transformSys:tick(deltaTime) -- Re-update transforms after physics step
-        world:getSystem('TriggerSys'):tick(deltaTime)
-    end
-    
-    world:getSystem('CameraSetupSys'):tick(deltaTime)
-    world:getSystem('DisplaySys'):tick(deltaTime)
+    world:update(deltaTime, userInteractController)
 
     postUpdate()
 end
@@ -205,10 +140,9 @@ function love.draw()
         love.graphics.replaceTransform(renderEnv:getCameraProj())
     end
     
-    local displaySys = require('Script.World').getInstance():getSystem('DisplaySys')
-    if displaySys then
-        displaySys:draw()
-    end
+    local world = require('Script.World').getInstance()
+    world:draw()
+    
     -- require('Script.World').getInstance():getSystem('PhysicVisualizeSys'):draw()
 end
 

@@ -15,7 +15,8 @@ function PhysicSys:new(world)
     instance:addComponentRequirement(TransformCMP.ComponentTypeID, ComponentRequirementDesc:new(true, false))
     instance._physicsWorld = love.physics.newWorld(0, 9.8, false)  -- 创建一个物理世界，重力向下，单位为米/秒²
     
-    instance._collisionEvents = {}
+    -- [Phase 3] Use World event bus
+    -- instance._collisionEvents = {}
 
     instance._physicsWorld:setCallbacks(
         function(a, b, coll)
@@ -27,7 +28,8 @@ function PhysicSys:new(world)
             if not userDataB then userDataB = b:getBody():getUserData() end
 
             if userDataA and userDataB then
-                table.insert(instance._collisionEvents, {a = userDataA, b = userDataB, type = 'begin', contact = coll})
+                -- [Phase 3] Push to World
+                instance._world:recordCollisionEvent({a = userDataA, b = userDataB, type = 'begin', contact = coll})
             end
         end,
         function(a, b, coll)
@@ -38,7 +40,8 @@ function PhysicSys:new(world)
             if not userDataB then userDataB = b:getBody():getUserData() end
 
             if userDataA and userDataB then
-                table.insert(instance._collisionEvents, {a = userDataA, b = userDataB, type = 'end', contact = coll})
+                -- [Phase 3] Push to World
+                instance._world:recordCollisionEvent({a = userDataA, b = userDataB, type = 'end', contact = coll})
             end
         end,
         nil,
@@ -49,9 +52,10 @@ function PhysicSys:new(world)
 
 end
 
---- 获取当前帧的碰撞事件列表
+--- 获取当前帧的碰撞事件列表 (Deprecated, use World instead)
 function PhysicSys:getCollisionEvents()
-    return self._collisionEvents
+    -- return self._collisionEvents
+    return self._world:getCollisionEvents()
 end
 
 function PhysicSys:getPhysicsWorld()
@@ -61,7 +65,7 @@ end
 function PhysicSys:tick(deltaTime)
     MOD_BaseSystem.tick(self, deltaTime)
 
-    self._collisionEvents = {}
+    -- self._collisionEvents = {} -- Handled by World:clean()
     
     local view = self:getComponentsView()
     local physics = view._components[PhysicCMP.ComponentTypeID]
