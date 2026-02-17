@@ -2,6 +2,8 @@
 
 This document indexes all the ECS Systems currently implemented in the LoveGame project.
 
+**Note**: All Systems are now managed by the central `World` singleton. They register themselves upon creation and declare their dependencies using `addComponentRequirement` to receive optimized `ComponentsView`s.
+
 ## Core Systems
 - [CameraSetupSys](./systems/camera-setup-system.md): Manages camera projection and view matrices.
 - [DisplaySys](./systems/display-system.md): Handles rendering of sprites and animations.

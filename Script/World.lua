@@ -85,7 +85,6 @@ function World:getComponentsView(requiredComponentInfos)
     return newView
 end
 
--- Temporary placeholder for Phase 2/3 methods to allow compilation/loading
 function World:registerSystem(system)
     self._systems[system._nameOfSystem] = system
     -- Note: Systems should ideally initialize their view during creation, but as a safeguard we could ensure it here

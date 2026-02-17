@@ -1,6 +1,6 @@
 # Tasks: ECS World Refactor
 
-**Status**: In Progress
+**Status**: Completed
 **Spec**: [specs/003-ecs-world-refactor/spec.md](specs/003-ecs-world-refactor/spec.md)
 **Plan**: [specs/003-ecs-world-refactor/plan.md](specs/003-ecs-world-refactor/plan.md)
 
@@ -65,6 +65,8 @@
 - [x] T039 Update `Script/System/Gameplay/TriggerSys.lua` to pull collision events from `World` and remove dependency on `PhysicSys` [Script/System/Gameplay/TriggerSys.lua](Script/System/Gameplay/TriggerSys.lua)
 - [x] T027 Implement `World` Garbage Collection tick: destroy entities in Pending Destruction list only if `refCount == 0` [Script/World.lua](Script/World.lua)
 - [x] T028 Refactor `Script/System/Gameplay/TimeRewindSys.lua` to call `entity:retain()` on snapshot and `entity:release()` on discard [Script/System/Gameplay/TimeRewindSys.lua](Script/System/Gameplay/TimeRewindSys.lua)
+- [x] T053 Fix `ComponentsView:add` to ignore disabled entities and ensure `World` updates Views when `isEnable` changes [Script/ComponentsView.lua](Script/ComponentsView.lua)
+- [x] T054 Fix `Entity:boundOrReplaceComponent` to call `setIsArchDirty(true)` on replacement to ensure Views update [Script/Entity.lua](Script/Entity.lua)
 
 ## Phase 4: Integration & Polish
 
@@ -78,4 +80,5 @@
 - [x] T050 Verify **Idempotency**: Adding/Removing same entity multiple times in one frame works as expected. [Script/Tests/TestECSWorkflow.lua](Script/Tests/TestECSWorkflow.lua)
 - [x] T051 Verify **Resurrection**: Re-adding a Zombie entity successfully brings it back to life. [Script/Tests/TestECSWorkflow.lua](Script/Tests/TestECSWorkflow.lua)
 - [x] T052 Verify **Recursive Cancellation**: Adding/Removing parent recursively cancels child operations. [Script/Tests/TestECSWorkflow.lua](Script/Tests/TestECSWorkflow.lua)
+- [ ] T055 Update `architecture.md` and `architecture-systems.md` with new `World` and `ComponentsView` details [doc/architecture.md](doc/architecture.md)
 

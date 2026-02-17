@@ -1,11 +1,11 @@
 # ECS World Manager Refactor
 
 ## Status
-- **State**: Draft
+- **State**: Implemented
 - **Phases**:
-  - [ ] Analysis
-  - [ ] Plan
-  - [ ] Implementation
+  - [x] Analysis
+  - [x] Plan
+  - [x] Implementation
 
 ## Context
 Refactor the current ECS system management to introduce a central `World` singleton. This class will manage Entities, Systems, and the Render Environment, acting as the core of the ECS architecture. It addresses lifecycle management (creation, destruction, time rewind compatibility), hierarchical entity handling, and optimized component querying via `ComponentsView`.
@@ -87,6 +87,7 @@ Refactor the current ECS system management to introduce a central `World` single
 -   **Garbage Collection**:
     -   At the start of each `World` tick (or a visible cleanup phase), check the "Pending Destruction" queue.
     -   Only destroy entities (and their components) if their reference count is 0.
+    -   **Explicit Destruction**: The `Entity` class must provide a `destroy()` method that unbinds all components and cleans up resources. This is called by `World` during the garbage collection phase.
 
 ### 4. System Management
 -   **Registration**: All Systems must register with the `World` (`World:registerSystem(system)`).

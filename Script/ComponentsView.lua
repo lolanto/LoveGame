@@ -42,6 +42,11 @@ function ComponentsView:add(entity)
         return -- Already exists
     end
 
+    -- [Spec] Active Entities only (Enabled)
+    if not entity:isEnable_const() then
+        return
+    end
+
     -- Verify requirements (Filter)
     for cmpName, reqDesc in pairs(self._requiredComponentInfo) do
         if reqDesc._mustHave and not entity:getComponent(cmpName) then
