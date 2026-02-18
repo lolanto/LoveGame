@@ -55,6 +55,9 @@ function love.load()
     local blackHoleSys = BlackHoleSys:new(world)
     reg(blackHoleSys)
     
+    local LifeTimeSys = require('System.Gameplay.LifeTimeSys').LifeTimeSys
+    reg(LifeTimeSys:new(world))
+    
     local TimeRewindSys = require('System.Gameplay.TimeRewindSys').TimeRewindSys
     local timeRewindSys = TimeRewindSys:new(world)
     reg(timeRewindSys)

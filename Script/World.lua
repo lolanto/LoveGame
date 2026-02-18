@@ -341,6 +341,7 @@ function World:update(dt, userInteractController)
     end
 
     local timeRewindSys = self:getSystem('TimeRewindSys')
+    local lifeTimeSys = self:getSystem('LifeTimeSys')
     local blackHoleSys = self:getSystem('BlackHoleSys')
     local timeDilationSys = self:getSystem('TimeDilationSys')
     local mainCharSys = self:getSystem('MainCharacterInteractSys')
@@ -380,6 +381,9 @@ function World:update(dt, userInteractController)
         transformSys:tick(dt)
         timeRewindSys:postProcess()
     else
+        
+        -- Process Lifetimes
+        lifeTimeSys:tick(dt)
         mainCharSys:tick(dt)
         patrolSys:tick(dt)
         blackHoleSys:tick(dt)
