@@ -55,10 +55,9 @@ function BlackHoleSys:tick(deltaTime)
     -- Iterable Black Holes
     local view = self:getComponentsView()
     local gravCmpList = view._components[GravitationalFieldCMP.ComponentTypeName]
-    local lifeCmpList = view._components[LifeTimeCMP.ComponentTypeName]
     local transCmpList = view._components[TransformCMP.ComponentTypeName]
     
-    if not gravCmpList or not lifeCmpList or not transCmpList then return end
+    if not gravCmpList or not transCmpList then return end
     
     local count = view._count
     -- Use game time from TimeManager if needed, but here simple subtraction?
@@ -67,7 +66,6 @@ function BlackHoleSys:tick(deltaTime)
     
     for i = 1, count do
         local gravCmp = gravCmpList[i]
-        local lifeCmp = lifeCmpList[i]
         local transCmp = transCmpList[i]
         local entity = gravCmp:getEntity()
         
@@ -75,16 +73,8 @@ function BlackHoleSys:tick(deltaTime)
         local gameDt = tm:getDeltaTime(deltaTime, entity)
         
         if entity:isEnable_const() then
-             -- Update LifeTime (Game Time)
-             lifeCmp:addElapsedTime(gameDt)
-             
-             local isExpired = lifeCmp:isExpired_const()
-             
-             if isExpired then
-                 self._world:removeEntity(entity)
-             else
-                 self:applyAttraction(transCmp, gravCmp, gameDt)
-             end
+             -- Update LifeTime IS HANDLED BY LifeTimeSys NOW
+             self:applyAttraction(transCmp, gravCmp, gameDt)
         end
     end
 end

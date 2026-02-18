@@ -23,6 +23,7 @@ This document indexes all the ECS Systems currently implemented in the LoveGame 
 ## Time Mechanics
 - [TimeDilationSys](./systems/time-dilation-system.md): Handles "Slow Motion" effects.
 - [TimeRewindSys](./systems/time-rewind-system.md): Handles recording and replaying entity states.
+- [LifeTimeSys](./systems/lifetime-system.md): Manages entity lifespan.
 
 ## Templates
 - [template system](./systems/template-system.md)

@@ -13,6 +13,8 @@ LifeTimeCMP.ComponentTypeID = MOD_BaseComponent.RegisterType(LifeTimeCMP.Compone
 function LifeTimeCMP:new(duration)
     local instance = setmetatable(MOD_BaseComponent.new(self, LifeTimeCMP.ComponentTypeName), self)
     instance._maxDuration = duration or 10.0
+    assert(instance._maxDuration > 0, "LifeTimeCMP: Duration must be positive. Got: " .. tostring(instance._maxDuration))
+    assert(instance._maxDuration <= 3600, "LifeTimeCMP: Duration must be <= 3600 seconds (1 hour). Got: " .. tostring(instance._maxDuration))
     instance._elapsedTime = 0.0
     return instance
 end
