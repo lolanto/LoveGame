@@ -1,23 +1,52 @@
 local MOD_BaseSystem = require('BaseSystem').BaseSystem
+local ISubscriber = require('EventInterfaces').ISubscriber
+local MultiInheritHelper = require('MultiInheritHelper').MultiInheritHelper
+local MessageCenter = require('MessageCenter').MessageCenter
 
----@class TimeDilationSys : BaseSystem
+---@class TimeDilationSys : BaseSystem, ISubscriber
 ---@field _isDilationActive boolean 慢动作是否激活
 ---@field _isRewindActive boolean 时间回溯是否激活
-local TimeDilationSys = setmetatable({}, MOD_BaseSystem)
-TimeDilationSys.__index = TimeDilationSys
+local TimeDilationSys = MultiInheritHelper.createClass(MOD_BaseSystem, ISubscriber)
 TimeDilationSys.SystemTypeName = "TimeDilationSys"
 
-function TimeDilationSys:new()
-    local instance = setmetatable(MOD_BaseSystem.new(self, TimeDilationSys.SystemTypeName), self)
+function TimeDilationSys:new(world)
+    local o = MOD_BaseSystem.new(self, TimeDilationSys.SystemTypeName, world)
+    local instance = setmetatable(o, TimeDilationSys)
+    
+    -- Initialize ISubscriber
+    -- Manually initialize because ISubscriber:new sets metatable which we don't want (we want to keep TimeDilationSys metatable)
+    instance._subscriberName = "TimeDilationSys"
+    instance._subscriberID = ISubscriber.static.nextID
+    ISubscriber.static.nextID = ISubscriber.static.nextID + 1
+
     instance._isDilationActive = false
-    instance._timeRewindSys = nil
+    instance._isRewindActive = false
+    instance:initView()
+    
+    instance:_registerEvents()
+    
     return instance
 end
 
---- 设置关联的时间回溯系统，用于优先级判断
----@param timeRewindSys TimeRewindSys
-function TimeDilationSys:setTimeRewindSys(timeRewindSys)
-    self._timeRewindSys = timeRewindSys
+function TimeDilationSys:_registerEvents()
+    local messageCenter = MessageCenter.static.getInstance()
+    -- We need to require the module to access the Event definitions
+    local TimeRewindModule = require('System.Gameplay.TimeRewindSys')
+    
+    messageCenter:subscribe(TimeRewindModule.Event_RewindStarted, self, self.onRewindStarted, self)
+    messageCenter:subscribe(TimeRewindModule.Event_RewindEnded, self, self.onRewindEnded, self)
+end
+
+function TimeDilationSys:onRewindStarted()
+    self._isRewindActive = true
+    if self._isDilationActive then
+        self._isDilationActive = false
+        -- Time rewinds handles resetting timescale to 1.0, so we just update flag
+    end
+end
+
+function TimeDilationSys:onRewindEnded()
+    self._isRewindActive = false
 end
 
 --- 处理用户输入
@@ -27,12 +56,7 @@ function TimeDilationSys:processUserInput(userInteractController)
     local TimeManager = require('TimeManager').TimeManager.static.getInstance()
 
     -- 优先级检查：如果时间回溯激活中，强制在逻辑上退出慢动作状态，并直接返回
-    -- 注意：TimeRewindSys 已经负责了将 TimeScale 重置为 1.0，所以这里只需要更新自身状态
-    if self._timeRewindSys and self._timeRewindSys:getIsRewinding() then
-        if self._isDilationActive then
-            -- 既然回溯系统会重置时间，我们只需要更新标记
-            self._isDilationActive = false
-        end
+    if self._isRewindActive then
         return
     end
 

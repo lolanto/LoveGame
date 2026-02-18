@@ -7,16 +7,7 @@ if os.getenv('LOCAL_LUA_DEBUGGER_VSCODE') == '1' then
 end
 
 
----@type Entity[]
-local entities = {}
----@type table<string, BaseSystem>
-local systems = {}
 local userInteractController = {}
-
----@type Entity|nil
-local mainCharacterEntity = nil
----@type Entity|nil
-local mainCameraEntity = nil
 
 ---@type RenderEnv|nil
 local renderEnv = nil
@@ -24,36 +15,58 @@ local renderEnv = nil
 function love.load()
     renderEnv = require('RenderEnv').RenderEnv:new()
     require('RenderEnv').RenderEnv.setGlobalInstance(renderEnv)
-    userInteractController = require('UserInteractController').UserInteractController:new()
+    
+    local UserInteractController = require('UserInteractController').UserInteractController
+    userInteractController = UserInteractController:new()
 
     local MUtils = require('MUtils')
     MUtils.InitLogger()
-    -- Register some default modules if needed
     MUtils.RegisterModule("Main", "INFO", "DEBUG")
     
     local MOD_Entity = require('Entity')
-    local TimeManager = require('TimeManager').TimeManager
-
-    systems['TransformUpdateSys'] = require('System.TransformUpdateSys').TransformUpdateSys:new()
-    systems['MainCharacterInteractSys'] = require('System.MainCharacterInteractSys').MainCharacterInteractSys:new()
-    systems['PatrolSys'] = require('System.Gameplay.PatrolSys').PatrolSys:new()
-    systems['EntityMovementSys'] = require('System.EntityMovementSys').EntityMovementSys:new()
-    systems['CameraSetupSys'] = require('System.CameraSetupSys').CameraSetupSys:new()
-    systems['DisplaySys'] = require('System.DisplaySys').DisplaySys:new()
-    systems['PhysicSys'] = require('System.PhysicSys').PhysicSys:new()
-    systems['PhysicVisualizeSys'] = require('System.PhysicSys').PhysicVisualizeSys:new()
-    systems['TriggerSys'] = require('System.Gameplay.TriggerSys').TriggerSys:new()
-    systems['TriggerSys']:setPhysicSys(systems['PhysicSys'])
-    systems['BlackHoleSys'] = require('System.Gameplay.BlackHoleSys').BlackHoleSys:new()
-    systems['BlackHoleSys']:setPhysicSys(systems['PhysicSys'])
-    systems['TimeRewindSys'] = require('System.Gameplay.TimeRewindSys').TimeRewindSys:new()
-    systems['TimeDilationSys'] = require('System.Gameplay.TimeDilationSys').TimeDilationSys:new()
-    systems['TimeDilationSys']:setTimeRewindSys(systems['TimeRewindSys'])
+    local world = require('World').World.static.getInstance()
+    
+    -- Register Systems
+    local function reg(sys) world:registerSystem(sys) end
+    
+    local TransformUpdateSys = require('System.TransformUpdateSys').TransformUpdateSys
+    reg(TransformUpdateSys:new(world))
+    
+    local MainCharacterInteractSys = require('System.MainCharacterInteractSys').MainCharacterInteractSys
+    local mainCharSys = MainCharacterInteractSys:new(world)
+    mainCharSys:setupUserInteractController(userInteractController)
+    reg(mainCharSys)
+    
+    reg(require('System.Gameplay.PatrolSys').PatrolSys:new(world))
+    reg(require('System.EntityMovementSys').EntityMovementSys:new(world))
+    reg(require('System.CameraSetupSys').CameraSetupSys:new(world))
+    reg(require('System.DisplaySys').DisplaySys:new(world))
+    
+    local PhysicSys = require('System.PhysicSys').PhysicSys
+    local physicSys = PhysicSys:new(world)
+    reg(physicSys)
+    reg(require('System.PhysicSys').PhysicVisualizeSys:new(world))
+    
+    local TriggerSys = require('System.Gameplay.TriggerSys').TriggerSys
+    local triggerSys = TriggerSys:new(world)
+    reg(triggerSys)
+    
+    local BlackHoleSys = require('System.Gameplay.BlackHoleSys').BlackHoleSys
+    local blackHoleSys = BlackHoleSys:new(world)
+    reg(blackHoleSys)
+    
+    local TimeRewindSys = require('System.Gameplay.TimeRewindSys').TimeRewindSys
+    local timeRewindSys = TimeRewindSys:new(world)
+    reg(timeRewindSys)
+    
+    local TimeDilationSys = require('System.Gameplay.TimeDilationSys').TimeDilationSys
+    local timeDilationSys = TimeDilationSys:new(world)
+    reg(timeDilationSys)
 
     local image = love.graphics.newImage("Resources/debug_characters.png")
-    print(image)
     love.graphics.setBackgroundColor(255,255,255)
 
+    -- Setup Player
     local player = MOD_Entity:new('player')
     player:setEnable(true)
     player:setVisible(true)
@@ -62,44 +75,39 @@ function love.load()
     player:boundComponent(require('Component.MainCharacterControllerCMP').MainCharacterControllerCMP:new())
     player:boundComponent(require('Component.MovementCMP').MovementCMP:new())
     player:boundComponent(require('Component.CameraCMP').CameraCMP:new())
-    player:boundComponent(require('Component.PhysicCMP').PhysicCMP:new(
-        systems['PhysicSys']:getWorld(),
-        {
-            shape = require('Component.PhysicCMP').Shape.static.Rectangle(1, 1, 0, 0, 0, 1),
-            fixedRotation = true
-        }
-    ))
+    player:boundComponent(
+        require('Component.PhysicCMP').PhysicCMP:new(
+            physicSys:getPhysicsWorld(),
+            {
+                shape = require('Component.PhysicCMP').Shape.static.Rectangle(1, 1, 0, 0, 0, 1),
+                fixedRotation = true
+            }
+        )
+    )
     player:boundComponent(require('Component.Gameplay.TriggerCMP').TriggerCMP:new())
-
-    table.insert(entities, player)
     player:setNeedRewind(true)
-    -- 标记主角为时间管理的例外实体，使其不受慢动作影响（或者说自动补偿）
     player:setTimeScaleException(true)
     
-    systems['BlackHoleSys']:setMainCharacter(player)
+    world:addEntity(player)
+    world:setMainCharacter(player)
 
+    -- Setup Camera Entity (Child of Player)
     local entityCam = MOD_Entity:new('camera')
     entityCam:setEnable(true)
     entityCam:setVisible(true)
     entityCam:boundComponent(require('Component.CameraCMP').CameraCMP:new())
     entityCam:boundComponent(require('Component.TransformCMP').TransformCMP:new())
     entityCam:boundComponent(require('Component.DrawableComponents.DebugTileTexture').DebugTileTextureCMP:new())
-    table.insert(entities, entityCam)
     player:boundChildEntity(entityCam)
+    
+    world:addEntity(entityCam)
+    world:setMainCamera(entityCam)
 
-    -- local entity2 = MOD_Entity:new('debug')
-    -- entity2:boundComponent(require('Component.DrawableComponents.DebugColorBlockCMP').DebugColorBlockCMP:new({255,0,0,255}, 1, 1))
-    -- entity2:getComponent('DebugColorBlockCMP'):setLayer(-1) -- 设置这个组件的绘制层级为-1
-    -- entity2:boundComponent(require('Component.TransformCMP').TransformCMP:new())
-    -- entity2:boundComponent(require('Component.MovementCMP').MovementCMP:new())
-    -- table.insert(entities, entity2)
-    -- entity:boundChildEntity(entity2)
+    -- [Phase 4 Verification] Uncomment to run ECS Stress Tests
+    -- require('Tests.TestECSWorkflow').run()
 
     local LevelManager = require('LevelManager').LevelManager
     LevelManager.static.getInstance():requestLoadLevel('Level1')
-
-    mainCharacterEntity = entity
-    mainCameraEntity = entity
 end
 
 function preUpdate(deltaTime)
@@ -111,143 +119,26 @@ function postUpdate()
 end
 
 function love.update(deltaTime)
-    -- Cleanup destroyed entities
-    local activeEntities = {}
-    for i = 1, #entities do
-        if not entities[i]:isDestroyed() then
-            table.insert(activeEntities, entities[i])
-        end
-    end
-    entities = activeEntities
-
-    -- 处理消息中心积压的事件
+    local world = require('World').World.static.getInstance()
+    
     require('MessageCenter').MessageCenter.static.getInstance():dispatch()
 
     preUpdate(deltaTime)
-    local LevelManager = require('LevelManager').LevelManager
-    LevelManager.static.getInstance():tick(entities, systems)
     
-    local thisFrameEntities = {}
-    local visitedEntities = {}
-    local function traverseEntity(entity)
-        if entity == nil or visitedEntities[entity] or entity:isDestroyed() then
-            return
-        end
-        visitedEntities[entity] = true
-        table.insert(thisFrameEntities, entity)
-        if entity.getChildren then
-            local children = entity:getChildren()
-            if children ~= nil then
-                for i = 1, #children do
-                    traverseEntity(children[i])
-                end
-            end
-        end
-    end
-
-    local rootEntities = {}
-    for i = 1, #entities do
-        local entity = entities[i]
-        if entity ~= nil then
-            if mainCharacterEntity == nil and entity:hasComponent('MainCharacterControllerCMP') then
-                mainCharacterEntity = entity
-            end
-            if mainCameraEntity == nil and entity:hasComponent('CameraCMP') then
-                mainCameraEntity = entity
-            end
-            if entity.getParent == nil or entity:getParent() == nil then
-                table.insert(rootEntities, entity)
-            end
-        end
-    end
-
-    for i = 1, #rootEntities do
-        traverseEntity(rootEntities[i])
-    end
-
-    -- 更新用户输入，将UserInteractController传递给各个关键的组件
-    -- todo 用户输入先交给UI逻辑过一遍
-
-    -- 假如有主角实体，则将UserInteractController传递给主角控制组件
-    if mainCharacterEntity ~= nil then
-        ---@type BaseComponent|nil
-        local mainCharCtrlCmp = mainCharacterEntity:getComponent('MainCharacterControllerCMP')
-        if mainCharCtrlCmp ~= nil then
-            ---@cast mainCharCtrlCmp MainCharacterControllerCMP
-            mainCharCtrlCmp:update(deltaTime, userInteractController)
-        end
-        -- Update BlackHoleSys target to current main character
-        systems['BlackHoleSys']:setMainCharacter(mainCharacterEntity)
-    end
-    systems['TimeDilationSys']:processUserInput(userInteractController)
-    systems['BlackHoleSys']:processUserInput(userInteractController)
-    systems['TimeRewindSys']:processUserInput(userInteractController)
-
-    systems['TransformUpdateSys']:preCollect()
-    systems['MainCharacterInteractSys']:preCollect()
-    systems['PatrolSys']:preCollect()
-    systems['BlackHoleSys']:preCollect()
-    systems['EntityMovementSys']:preCollect()
-    systems['CameraSetupSys']:preCollect()
-    systems['DisplaySys']:preCollect()
-    systems['PhysicSys']:preCollect()
-    systems['PhysicVisualizeSys']:preCollect()
-    systems['TimeDilationSys']:preCollect()
-    systems['TimeRewindSys']:preCollect()
-    systems['TriggerSys']:preCollect()
+    require('LevelManager').LevelManager.static.getInstance():tick()
     
-    for i = 1, #thisFrameEntities do
-        local entity = thisFrameEntities[i]
-        if entity ~= nil then
-            systems['TransformUpdateSys']:collect(entity)
-            systems['MainCharacterInteractSys']:collect(entity)
-            systems['PatrolSys']:collect(entity)
-            systems['BlackHoleSys']:collect(entity)
-            systems['EntityMovementSys']:collect(entity)
-            systems['CameraSetupSys']:collect(entity)
-            systems['DisplaySys']:collect(entity)
-            systems['PhysicSys']:collect(entity)
-            systems['PhysicVisualizeSys']:collect(entity)
-            systems['TimeRewindSys']:collect(entity)
-            systems['TriggerSys']:collect(entity)
-        end
-    end
-
-    systems['TimeDilationSys']:tick(deltaTime)
-    systems['TimeRewindSys']:tick(deltaTime)
-    
-    if systems['TimeRewindSys']:getIsRewinding() then
-        -- 回溯模式：跳过正常的逻辑更新和物理模拟
-        -- 仅更新变换和摄像机/显示系统
-        
-        -- 确保Transform Hierarchy正确计算
-        systems['TransformUpdateSys']:tick(deltaTime)
-
-        systems['TimeRewindSys']:postProcess()
-        
-    else
-        systems['MainCharacterInteractSys']:tick(deltaTime)
-        systems['PatrolSys']:tick(deltaTime)
-        systems['BlackHoleSys']:tick(deltaTime)
-        systems['EntityMovementSys']:tick(deltaTime)
-        systems['TransformUpdateSys']:tick(deltaTime)
-
-        systems['PhysicSys']:tick(deltaTime)
-        systems['TransformUpdateSys']:tick(deltaTime)
-        systems['TriggerSys']:tick(deltaTime)
-    end
-    
-    ---@cast systems['CameraSetupSys'] CameraSetupSys
-    systems['CameraSetupSys']:tick(deltaTime)
-    systems['DisplaySys']:tick(deltaTime)
+    world:update(deltaTime, userInteractController)
 
     postUpdate()
 end
 
 function love.draw()
-    love.graphics.replaceTransform(renderEnv:getCameraProj())
-    systems['DisplaySys']:draw()
-    -- systems['PhysicVisualizeSys']:draw()
+    if renderEnv and renderEnv.getCameraProj then
+        love.graphics.replaceTransform(renderEnv:getCameraProj())
+    end
+    
+    local world = require('World').World.static.getInstance()
+    world:draw()
 end
 
 function love.mousepressed(x, y, button, istouch, presses)

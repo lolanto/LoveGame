@@ -5,32 +5,23 @@ local TriggerSys = setmetatable({}, MOD_BaseSystem)
 TriggerSys.__index = TriggerSys
 TriggerSys.SystemTypeName = "TriggerSys"
 
-function TriggerSys:new()
-    local instance = setmetatable(MOD_BaseSystem.new(self, TriggerSys.SystemTypeName), self)
+function TriggerSys:new(world)
+    local instance = setmetatable(MOD_BaseSystem.new(self, TriggerSys.SystemTypeName, world), self)
     local ComponentRequirementDesc = require('BaseSystem').ComponentRequirementDesc
+    local TriggerCMP = require('Component.Gameplay.TriggerCMP').TriggerCMP
     
     -- 我们注册 TriggerCMP 需求，虽然核心逻辑是响应 Collision 事件，但这能让系统感知 Trigger 组件的存在。
-    instance:addComponentRequirement(require('Component.Gameplay.TriggerCMP').TriggerCMP.ComponentTypeID, ComponentRequirementDesc:new(true, false))
+    instance:addComponentRequirement(TriggerCMP.ComponentTypeID, ComponentRequirementDesc:new(true, false))
+    instance:initView()
     
-    instance._physicSys = nil
+    -- instance._physicSys = nil -- Deprecated
     return instance
-end
-
---- 设置物理系统引用，以便获取碰撞事件
---- @param physicSys PhysicSys
-function TriggerSys:setPhysicSys(physicSys)
-    self._physicSys = physicSys
 end
 
 function TriggerSys:tick(deltaTime)
     MOD_BaseSystem.tick(self, deltaTime)
 
-    if not self._physicSys then 
-        -- 如果没有设置物理系统，就无法工作
-        return 
-    end
-
-    local events = self._physicSys:getCollisionEvents()
+    local events = self._world:getCollisionEvents()
     if not events then return end
 
     for _, event in ipairs(events) do

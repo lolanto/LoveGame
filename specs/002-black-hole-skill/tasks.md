@@ -61,5 +61,7 @@
 - [x] T022 Verify Time Dilation scaling in `BlackHoleSys` logic.
 - [x] T023 Move Black Hole configuration (Radius: 5.0, ForceStrength: 400.0, MinRadius: 0.5, Duration: 10.0) from `BlackHoleSys.lua` to `Script/Config.lua`
 - [x] T024 Move Black Hole Input Binding (TriggerKey: 't') from `BlackHoleSys.lua` to `Script/Config.lua`
+- [x] T025 Update force calculation in `BlackHoleSys.lua` to be Mass-Independent: `F = (Strength * Mass) / Distance^2`
+- [x] T026 Verify "Ignore List" filtering uses unique Entity IDs in `BlackHoleSys.lua`
 - [x] T018 Test and Verify revisions
 

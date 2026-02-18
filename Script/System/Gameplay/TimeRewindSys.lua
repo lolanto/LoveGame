@@ -3,6 +3,10 @@ local MUtils = require('MUtils')
 local ISubscriber = require('EventInterfaces').ISubscriber
 local MultiInheritHelper = require('MultiInheritHelper').MultiInheritHelper
 
+local MessageCenter = require('MessageCenter').MessageCenter
+local Event_RewindStarted = MessageCenter.static.getInstance():registerEvent("Event_RewindStarted")
+local Event_RewindEnded = MessageCenter.static.getInstance():registerEvent("Event_RewindEnded")
+
 ---@class TimeRewindSys : MOD_BaseSystem, ISubscriber
 ---@field _isRewinding boolean
 ---@field _history table[] -- stack of snapshots
@@ -10,13 +14,18 @@ local MultiInheritHelper = require('MultiInheritHelper').MultiInheritHelper
 local TimeRewindSys = MultiInheritHelper.createClass(MOD_BaseSystem, ISubscriber)
 TimeRewindSys.SystemTypeName = "TimeRewindSys"
 
-function TimeRewindSys:new(o)
+function TimeRewindSys:new(world, o)
     o = o or {}
     -- 初始化两个父类的数据
-    o = MOD_BaseSystem:new(TimeRewindSys.SystemTypeName, o)
-    o = ISubscriber:new(TimeRewindSys.SystemTypeName, o)
+    -- BaseSystem initialization with World
+    o = MOD_BaseSystem.new(self, TimeRewindSys.SystemTypeName, world)
     
-    -- 将对象的元表设置为当前类 TimeRewindSys
+    -- Mock ISubscriber initialization if needed (ISubscriber usually stateless or handles own data)
+    -- Assuming MultiInheritHelper handles metatables, we just need to set properties.
+    -- But since we called MOD_BaseSystem.new, we got a new table.
+    -- We must ensure it behaves like TimeRewindSys which inherits ISubscriber.
+    -- MultiInheritHelper.createClass already set TimeRewindSys metatable.
+    
     local instance = setmetatable(o, TimeRewindSys)
     
     instance._isRewinding = false
@@ -25,12 +34,19 @@ function TimeRewindSys:new(o)
     instance._maxHistoryDuration = 10.0 -- seconds
     instance._currentRecordTime = 0
     instance._rewindSpeedMultiplier = 4.0
+    
+    instance:initView()
 
     local messageCenter = require('MessageCenter').MessageCenter.static.getInstance()
+
     local event_LeaveLevel = require('LevelManager').Event_LevelUnloaded
     messageCenter:subscribe(event_LeaveLevel, instance, TimeRewindSys.onLeaveLevel, instance, 'TimeRewindSys_onLeaveLevel')
 
     return instance
+end
+
+function TimeRewindSys:setPhysicsWorld(world)
+    -- Stub compatibility
 end
 
 function TimeRewindSys:preCollect()
@@ -77,21 +93,33 @@ end
 --- @return nil
 function TimeRewindSys:enableRewind(enable)
     local TimeManager = require('TimeManager').TimeManager.static.getInstance()
+    local messageCenter = require('MessageCenter').MessageCenter.static.getInstance()
+
     if enable and not self._isRewinding then
         self._isRewinding = true
         -- 进入时间回溯的瞬间，强制重置时间速率为正常值
         -- 这样可以防止回溯结束后玩家仍然处于慢动作状态，同时也明确了回溯操作本身是“打破”时间流的行为
         TimeManager:setTimeScale(1.0)
+        
+        messageCenter:broadcast(self, Event_RewindStarted, nil)
     elseif not enable and self._isRewinding then
         self._isRewinding = false
         self:truncateHistory()
         -- 退出回溯时，再次确保时间速率为1.0（虽然进入时已设置，但这符合"回溯结束后保持默认"的预期）
         TimeManager:setTimeScale(1.0)
+
+        messageCenter:broadcast(self, Event_RewindEnded, nil)
     end
 end
 
 function TimeRewindSys:setRewindSpeedMultiplier(multiplier)
     self._rewindSpeedMultiplier = multiplier
+end
+
+function TimeRewindSys:_releaseSnapshot(snapshotData)
+    for entity, _ in pairs(snapshotData) do
+        entity:release()
+    end
 end
 
 function TimeRewindSys:record(deltaTime)
@@ -125,6 +153,8 @@ function TimeRewindSys:record(deltaTime)
             
             if hasData then
                 snapshot[entity] = entitySnapshot
+                -- [Phase 3] Retain entity so it doesn't get destroyed while in history
+                entity:retain()
             end
         end
     end
@@ -136,6 +166,8 @@ function TimeRewindSys:record(deltaTime)
     
     -- Cleanup old history based on duration
     while #self._history > 0 and (self._currentRecordTime - self._history[1].time > self._maxHistoryDuration) do
+        local oldSnapshot = self._history[1].data
+        self:_releaseSnapshot(oldSnapshot)
         table.remove(self._history, 1)
     end
 end
@@ -145,6 +177,8 @@ function TimeRewindSys:truncateHistory()
     -- Since history is sorted by time
     for i = #self._history, 1, -1 do
         if self._history[i].time > self._currentRecordTime then
+            local futureSnapshot = self._history[i].data
+            self:_releaseSnapshot(futureSnapshot)
             table.remove(self._history, i)
         else
             break
@@ -188,39 +222,61 @@ function TimeRewindSys:rewind(deltaTime)
         t = (self._currentRecordTime - snapshotA.time) / (snapshotB.time - snapshotA.time)
     end
     
-    -- Iterate all tracked entities to handle enable/disable state
+    local world = require('World').World.static.getInstance() 
+    
+    -- Set of entites currently in World (as tracked by this system)
+    local worldEntitiesSet = {}
     for _, entity in ipairs(self._rewindEntities) do
-        local entitySnapshotA = snapshotA.data[entity]
-        local entitySnapshotB = snapshotB.data[entity]
-        
-        if entitySnapshotA then
-            -- Entity existed at this time: Enable it
-            if entity.setEnable then entity:setEnable(true) end
-            if entity.setVisible then entity:setVisible(true) end
-            
-            for typeID, stateA in pairs(entitySnapshotA) do
-                local component = entity._components[typeID]
-                local stateB = nil
-                if entitySnapshotB then
-                    stateB = entitySnapshotB[typeID]
-                end
+        worldEntitiesSet[entity] = true
+    end
 
-                if component and stateB then
-                     if component.lerpRewindState then
-                        component:lerpRewindState(stateA, stateB, t)
-                     elseif component.restoreRewindState then
-                        component:restoreRewindState(stateA)
-                     end
-                elseif component and component.restoreRewindState then
-                     component:restoreRewindState(stateA)
-                end
-            end
+    local snapshotEntities = snapshotA.data
+    local nextRewindEntities = {}
+
+    -- 1. Remove entities that are in the World but not in the past snapshot
+    for _, entity in ipairs(self._rewindEntities) do
+        if not snapshotEntities[entity] then
+            -- Case 2: Entity added in present, not in past -> Remove
+            world:removeEntity(entity)
         else
-            -- Entity did not exist at this time: Disable it
-            if entity.setEnable then entity:setEnable(false) end
-            if entity.setVisible then entity:setVisible(false) end
+            table.insert(nextRewindEntities, entity)
         end
     end
+    
+    -- 2. Add entities that are in the past snapshot but not in the World
+    --    And restore state for ALL entities in the snapshot
+    for entity, entitySnapshotA in pairs(snapshotEntities) do
+        if not worldEntitiesSet[entity] then
+            -- Case 1: Entity removed in present, exists in past -> Add
+            world:addEntity(entity)
+            table.insert(nextRewindEntities, entity)
+        end
+        
+        local entitySnapshotB = snapshotB.data[entity]
+        
+        -- Case 3: Restore state
+        -- Entity existed at this time: Enable it
+        if entity.setEnable then entity:setEnable(true) end
+        if entity.setVisible then entity:setVisible(true) end
+        
+        for typeID, stateA in pairs(entitySnapshotA) do
+            local component = entity._components[typeID]
+            local stateB = nil
+            if entitySnapshotB then
+                stateB = entitySnapshotB[typeID]
+            end
+
+            if component then
+                 if stateB and component.lerpRewindState then
+                    component:lerpRewindState(stateA, stateB, t)
+                 elseif component.restoreRewindState then
+                    component:restoreRewindState(stateA)
+                 end
+            end
+        end
+    end
+
+    self._rewindEntities = nextRewindEntities
 end
 
 function TimeRewindSys:postProcess()
@@ -237,8 +293,18 @@ end
 function TimeRewindSys.onLeaveLevel(subscriberContext, broadcasterContext)
     ---@type TimeRewindSys
     local self = subscriberContext
+    
+    -- [Phase 3] Clear history and release all retained entities
+    for _, historyItem in ipairs(self._history) do
+        self:_releaseSnapshot(historyItem.data)
+    end
+    
     self._history = {}
     self._currentRecordTime = 0
 end
 
-return { TimeRewindSys = TimeRewindSys }
+return { 
+    TimeRewindSys = TimeRewindSys,
+    Event_RewindStarted = Event_RewindStarted,
+    Event_RewindEnded = Event_RewindEnded
+}

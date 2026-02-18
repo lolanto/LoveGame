@@ -16,11 +16,16 @@ MUtils.RegisterModule(LOG_MODULE)
 --- @field _level Level|nil ReadOnly
 local Entity = {}
 Entity.__index = Entity
+Entity.static = {}
+Entity.static._nextId = 1 -- Global ID Counter
 
 --- cst, 构造entity对象
 --- @param nameOfEntity string entity的名称
 function Entity:new(nameOfEntity)
     local instance = setmetatable({}, self)
+    instance._id = Entity.static._nextId
+    Entity.static._nextId = Entity.static._nextId + 1
+    
     instance._nameOfEntity = nameOfEntity -- Entity的名称
     instance._components = {} -- Entity所绑定的组件
     instance._childEntities = {} -- Entity的子Entity
@@ -29,24 +34,59 @@ function Entity:new(nameOfEntity)
     instance._boundingQuad = nil -- Entity的包围盒
     instance._isVisible = false -- 当前Entity是否可见
     instance._isEnable = false -- 当前Entity是否被激活
-    instance._isDestroyed = false -- 是否被销毁
     instance._needRewind = false -- 是否需要回溯
     instance._isTimeScaleException = false -- 是否不受时间缩放影响
     instance._level = nil -- Entity所属的Level ReadOnly
+    
+    -- [New ECS Architecture]
+    instance._refCount = 0 -- Reference Count for TimeRewind/World management
+    instance._world = nil -- Reference to World (if registered)
+    instance._isArchDirty = false -- Flag for Deferred Archetype Update
+    
     return instance
 end
 
-function Entity:markForDeletion()
-    self._isDestroyed = true
+--- Retrieves the Entity ID (using memory address or a generated ID if available)
+--- Currently using self as ID for table keys if object
+function Entity:getID()
+    return self._id
 end
 
-function Entity:isDestroyed()
-    return self._isDestroyed
+function Entity:getID_const()
+    return self._id
+end
+
+--- Increments the reference count
+function Entity:retain()
+    self._refCount = self._refCount + 1
+    --- recursively retain child entities to ensure they stay alive as long as the parent is referenced
+    for _, child in pairs(self._childEntities) do
+        child:retain()
+    end
+end
+
+--- Decrements the reference count
+function Entity:release()
+    self._refCount = self._refCount - 1
+    if self._refCount < 0 then
+        error("Entity refCount < 0: " .. self._nameOfEntity)
+    end
+    --- recursively release child entities to allow them to be cleaned up when parent is released
+    for _, child in pairs(self._childEntities) do
+        child:release()
+    end
+end
+
+function Entity:getRefCount_const()
+    return self._refCount
 end
 
 --- 设置实体是否激活
 function Entity:setEnable(value)
-    self._isEnable = value
+    if self._isEnable ~= value then
+        self._isEnable = value
+        self:setIsArchDirty(true)
+    end
 end
 
 function Entity:isEnable_const()
@@ -113,6 +153,7 @@ function Entity:boundComponent(inputComponent)
     self._components[typeID] = inputComponent
     inputComponent._entity = self
     inputComponent:onBound(self)
+    self:setIsArchDirty(true)
 end
 
 --- 绑定或者替换一个已有的组件
@@ -129,10 +170,12 @@ function Entity:boundOrReplaceComponent(inputComponent)
         self._components[typeID] = inputComponent
         oldComponent._entity = nil
         inputComponent:onBound(self)
+        self:setIsArchDirty(true)
         return oldComponent
     else
         self._components[typeID] = inputComponent
         inputComponent:onBound(self)
+        self:setIsArchDirty(true)
         return nil
     end
     return nil
@@ -148,6 +191,7 @@ function Entity:unboundComponent(componentTypeID)
         self._components[componentTypeID] = nil
     end
     retComp._entity = nil
+    self:setIsArchDirty(true)
     return retComp
 end
 
@@ -173,12 +217,12 @@ function Entity:getComponent_const(componentType)
     -- try exact id first
     local exact = self._components[cmpID]
     if exact ~= nil then
-        return require("utils.ReadOnly").makeReadOnly(exact)
+        return require("ReadOnly").makeReadOnly(exact)
     end
     -- 如果没有精确匹配，则将这个数字视作父类的ID，查找派生类组件
     for _, comp in pairs(self._components) do
         if comp ~= nil and comp:isInstanceOf(cmpName) then
-            return require("utils.ReadOnly").makeReadOnly(comp)
+            return require("ReadOnly").makeReadOnly(comp)
         end
     end
     return nil
@@ -262,7 +306,7 @@ function Entity:getParent()
 end
 
 function Entity:getParent_const()
-    return require("utils.ReadOnly").makeReadOnly(self._parentEntity)
+    return require("ReadOnly").makeReadOnly(self._parentEntity)
 end
 
 --- 获取子Entity列表
@@ -308,6 +352,11 @@ end
 --- 离开关卡时的回调
 function Entity:onLeaveLevel()
     self._level = nil
+    self:destroy()
+end
+
+--- 彻底销毁实体，清理所有组件资源
+function Entity:destroy()
     --- 销毁所有组件
     for _, comp in pairs(self._components) do
         if comp ~= nil then
@@ -316,6 +365,19 @@ function Entity:onLeaveLevel()
         end
     end
     self._components = {}
+end
+
+--- [New ECS Architecture] Set the World reference
+function Entity:setWorld(world)
+    self._world = world
+end
+
+--- Set the dirty flag for archetype updates and notify World
+function Entity:setIsArchDirty(dirty)
+    self._isArchDirty = dirty
+    if dirty and self._world then
+        self._world:markEntityDirty(self)
+    end
 end
 
 return Entity

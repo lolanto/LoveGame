@@ -21,16 +21,29 @@ BaseSystem.__index = BaseSystem
 
 ---cst, 系统构造函数
 ---@param nameOfSystem string 系统名称
-function BaseSystem:new(nameOfSystem, o)
-    o = o or {}
+---@param world World World单例
+function BaseSystem:new(nameOfSystem, world)
+    local o = {}
     local instance = setmetatable(o, self)
     instance._nameOfSystem = nameOfSystem
     instance._requiredComponentInfos = {}
-    instance._collectedComponents = {}
+    instance._componentsView = nil
+    instance._world = world
     return instance
 end
 
+--- 初始化View，必须在添加完所有组件需求后调用
+function BaseSystem:initView()
+    if self._componentsView then return end
+    if not self._world then error("World is not set in BaseSystem") end
+    self._componentsView = self._world:getComponentsView(self._requiredComponentInfos)
+end
 
+--- 获取当前系统对应的ComponentsView
+---@return ComponentsView
+function BaseSystem:getComponentsView()
+    return self._componentsView
+end
 
 ---增加组件的请求信息，假如组件信息已存在，则可修改其required
 ---@param componentInfo string|number 组件的描述信息，组件名称或者ID
@@ -62,44 +75,14 @@ function BaseSystem:removeComponentRequirement(componentInfo)
 end
 
 function BaseSystem:preCollect()
-    self._collectedComponents = {}
-    for componentName, requirementDesc in pairs(self._requiredComponentInfos) do
-        self._collectedComponents[componentName] = {}
-    end
+   -- Deprecated
 end
 
 ---从entity身上去收集组件
----@param entity Entity 目标Entity，将会从这个entity身上搜集组件
----@return boolean 搜集成功返回true，否则返回false
+---@deprecated View mode no longer uses collect()
 function BaseSystem:collect(entity)
-    -- 如果Entity未激活，且不是强制处理的情况（这里暂定都遵循isEnable），则跳过
-    if entity.isEnable_const and not entity:isEnable_const() then
-        return false
-    end
-
-    local ignoreThisEntity = false
-    local errorOccurred = false
-    local collectedComponents = {}
-    for componentName, requirementDesc in pairs(self._requiredComponentInfos) do
-        local retCmp = entity:getComponent(componentName)
-        collectedComponents[componentName] = retCmp
-        if retCmp == nil and requirementDesc._mustHave then
-            ignoreThisEntity = true
-            break
-        end
-    end
-    if ignoreThisEntity then
-        errorOccurred = false
-    else
-        for componentName, component in pairs(collectedComponents) do
-            local requirementDesc = self._requiredComponentInfos[componentName]
-            if requirementDesc._readOnly and component ~= nil then
-                component = require('utils.ReadOnly').makeComponentReadOnly(component)
-            end
-            table.insert(self._collectedComponents[componentName], component)
-        end
-    end
-    return not errorOccurred
+    -- Deprecated
+    return true
 end
 
 function BaseSystem:tick(deltaTime)

@@ -148,9 +148,12 @@ Examples of foundational tasks (adjust based on your project):
 
 ## Phase N: Polish & Cross-Cutting Concerns
 
-**Purpose**: Improvements that affect multiple user stories
+**Purpose**: Improvements and documentation sync (Constitution Principle V)
 
-- [ ] TXXX [P] Documentation updates in docs/
+- [ ] TXXX [P] Documentation updates:
+  - [ ] Update [architecture-systems.md] / [architecture-components.md] indexes
+  - [ ] Update specific docs in [.specify/memory/systems/] or [components/]
+  - [ ] Verify [architecture.md] reflects new structure
 - [ ] TXXX Code cleanup and refactoring
 - [ ] TXXX Performance optimization across all stories
 - [ ] TXXX [P] Additional unit tests (if requested) in tests/unit/

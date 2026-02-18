@@ -1,5 +1,8 @@
 
 local MOD_BaseSystem = require('BaseSystem').BaseSystem
+local MovementCMP = require('Component.MovementCMP').MovementCMP
+local TransformCMP = require('Component.TransformCMP').TransformCMP
+local TimeManager = require('TimeManager').TimeManager
 
 --- 控制实体移动的系统
 --- 这个系统会收集所有拥有MovementCMP以及TransformCMP组件的实体
@@ -9,11 +12,12 @@ local EntityMovementSys = setmetatable({}, MOD_BaseSystem)
 EntityMovementSys.__index = EntityMovementSys
 EntityMovementSys.SystemTypeName = "EntityMovementSys"
 
-function EntityMovementSys:new()
-    local instance = setmetatable(MOD_BaseSystem.new(self, EntityMovementSys.SystemTypeName), self)
+function EntityMovementSys:new(world)
+    local instance = setmetatable(MOD_BaseSystem.new(self, EntityMovementSys.SystemTypeName, world), self)
     local ComponentRequirementDesc = require('BaseSystem').ComponentRequirementDesc
-    instance:addComponentRequirement(require('Component.MovementCMP').MovementCMP.ComponentTypeID, ComponentRequirementDesc:new(true, true))
-    instance:addComponentRequirement(require('Component.TransformCMP').TransformCMP.ComponentTypeID, ComponentRequirementDesc:new(true, false))
+    instance:addComponentRequirement(MovementCMP.ComponentTypeID, ComponentRequirementDesc:new(true, true))
+    instance:addComponentRequirement(TransformCMP.ComponentTypeID, ComponentRequirementDesc:new(true, false))
+    instance:initView()
     return instance
 end
 
@@ -22,14 +26,24 @@ end
 ---@return nil
 function EntityMovementSys:tick(deltaTime)
     MOD_BaseSystem.tick(self, deltaTime)
-    local TimeManager = require('TimeManager').TimeManager.static.getInstance()
-    for i = 1, #self._collectedComponents['MovementCMP'] do
+    
+    local view = self:getComponentsView()
+    -- CHANGE: Use ComponentTypeName instead of ComponentTypeID
+    local movements = view._components[MovementCMP.ComponentTypeName]
+    local transforms = view._components[TransformCMP.ComponentTypeName]
+    
+    if not movements or not transforms then return end
+    
+    local count = view._count
+    local tmInstance = TimeManager.static.getInstance()
+    
+    for i = 1, count do
         ---@type MovementCMP
-        local movementCmp = self._collectedComponents['MovementCMP'][i]
+        local movementCmp = movements[i]
         ---@type TransformCMP
-        local transformCmp = self._collectedComponents['TransformCMP'][i]
+        local transformCmp = transforms[i]
         
-        local dt = TimeManager:getDeltaTime(deltaTime, movementCmp:getEntity_const())
+        local dt = tmInstance:getDeltaTime(deltaTime, movementCmp:getEntity_const())
         local vecX, vecY = movementCmp:getVelocity_const()
         local dx, dy = vecX * dt, vecY * dt
         local affect = nil

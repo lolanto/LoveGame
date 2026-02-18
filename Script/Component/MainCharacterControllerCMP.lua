@@ -72,7 +72,7 @@ end
 ---获取指定的命令是否被触发
 ---@param command string 控制命令
 ---@return boolean 指定的命令是否被触发
-function MainCharacterControllerCMP:doesCommandIsTriggered(command)
+function MainCharacterControllerCMP:doesCommandIsTriggered_const(command)
     return self._controlCommands[command] == true
 end
 

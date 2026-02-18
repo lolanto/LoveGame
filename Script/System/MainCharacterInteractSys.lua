@@ -1,5 +1,8 @@
 
 local MOD_BaseSystem = require('BaseSystem').BaseSystem
+local MainCharacterControllerCMP = require('Component.MainCharacterControllerCMP').MainCharacterControllerCMP
+local CharacterControlCommand = require('Component.MainCharacterControllerCMP').CharacterControlCommand
+local MovementCMP = require('Component.MovementCMP').MovementCMP
 
 --- 控制主角交互的逻辑
 ---@class MainCharacterInteractSys : BaseSystem
@@ -10,66 +13,15 @@ MainCharacterInteractSys.SystemTypeName = "MainCharacterInteractSys"
 -- gameplay相关的常量
 MainCharacterInteractSys.WalkSpeed = 2.0  -- 主角行走速度，单位m/s
 
-function MainCharacterInteractSys:new()
-    local instance = setmetatable(MOD_BaseSystem.new(self, MainCharacterInteractSys.SystemTypeName), self)
+function MainCharacterInteractSys:new(world)
+    local instance = setmetatable(MOD_BaseSystem.new(self, MainCharacterInteractSys.SystemTypeName, world), self)
     local ComponentRequirementDesc = require('BaseSystem').ComponentRequirementDesc
-    instance:addComponentRequirement(require('Component.MainCharacterControllerCMP').MainCharacterControllerCMP.ComponentTypeID, ComponentRequirementDesc:new(true, true))
-    instance:addComponentRequirement(require('Component.MovementCMP').MovementCMP.ComponentTypeID, ComponentRequirementDesc:new(true, false))
+    instance:addComponentRequirement(MainCharacterControllerCMP.ComponentTypeID, ComponentRequirementDesc:new(true, true))
+    instance:addComponentRequirement(MovementCMP.ComponentTypeID, ComponentRequirementDesc:new(true, false))
 
     instance._userInteractController = nil -- UserInteractController 用户交互控制器
+    instance:initView()
     return instance
-end
-
---- 从entity身上收集MainCharacterControllerCMP和MovementCMP组件
---- 理论上这个系统只会收集一个主角的组件，假如之前有其它方法已经设置过这些组件，将跳过收集
---- (覆写BaseSystem的collect方法)
----@param entity Entity 目标Entity，将会从这个entity身上搜集组件
----@return nil
-function MainCharacterInteractSys:collect(entity)
-    local lenOfMainCharCtrlCmps = #self._collectedComponents['MainCharacterControllerCMP']
-    local lenOfMovementCmps = #self._collectedComponents['MovementCMP']
-    assert(lenOfMainCharCtrlCmps == lenOfMovementCmps, string.format("The count of MainCharacterControllerCMP %d should be equal to the count of MovementCMP %d", lenOfMainCharCtrlCmps, lenOfMovementCmps))
-    -- 当且仅当lenOfMainCharCtrlCmps ~= 1时，尝试从entity搜索组件
-    while lenOfMainCharCtrlCmps ~= 1 do
-        local ignoreThisEntity = false
-        local mainCharCtrlCmp = nil
-        local movementCmp = nil
-        -- 搜索MainCharacterControllerCMP和MovementCMP
-        if ignoreThisEntity == false then
-            mainCharCtrlCmp = entity:getComponent('MainCharacterControllerCMP')
-            if mainCharCtrlCmp == nil then
-                ignoreThisEntity = true
-            end
-        end
-        if ignoreThisEntity == false then
-            movementCmp = entity:getComponent('MovementCMP')
-            if movementCmp == nil then
-                ignoreThisEntity = true
-            end
-        end
-        if ignoreThisEntity then
-            goto continue
-        end
-
-        -- 通过检查，收集组件
-        table.insert(self._collectedComponents['MainCharacterControllerCMP'], mainCharCtrlCmp)
-        table.insert(self._collectedComponents['MovementCMP'], movementCmp)
-        -- 更新计数
-        lenOfMainCharCtrlCmps = #self._collectedComponents['MainCharacterControllerCMP']
-        lenOfMovementCmps = #self._collectedComponents['MovementCMP']
-        
-        ::continue::
-    end
-end
-
---- 设置主角实体
---- 这个方法会调用collect方法从entity身上收集组件
---- 假如明确哪个entity是主角，可以直接调用这个方法以跳过搜索过程
----@param entity Entity 主角实体
----@return nil
-function MainCharacterInteractSys:setupCharacterEntity(entity)
-    assert(entity ~= nil, "The entity to setup should not be nil!")
-    self:collect(entity)
 end
 
 function MainCharacterInteractSys:setupUserInteractController(userInteractController)
@@ -78,47 +30,54 @@ function MainCharacterInteractSys:setupUserInteractController(userInteractContro
 end
 
 function MainCharacterInteractSys:tick(deltaTime)
-    MOD_BaseSystem:tick()
-    local lenOfMainCharCtrlCmps = #self._collectedComponents['MainCharacterControllerCMP']
-    local lenOfMovementCmps = #self._collectedComponents['MovementCMP']
-    assert(lenOfMainCharCtrlCmps == lenOfMovementCmps, string.format("The count of MainCharacterControllerCMP %d should be equal to the count of MovementCMP %d", lenOfMainCharCtrlCmps, lenOfMovementCmps))
-    if lenOfMainCharCtrlCmps == 0 then
-        return
-    end
-    assert(lenOfMainCharCtrlCmps == 1, "There should be only one main character controller component!")
+    MOD_BaseSystem.tick(self, deltaTime)
     
-    -- 将主角交互逻辑放在这里
-    -- 主角产生的交互命令在这里转换成移动组件的属性更新
-    ---@type MainCharacterControllerCMP
-    local mainCharCtrlCmp = self._collectedComponents['MainCharacterControllerCMP'][1]
-    ---@type MovementCMP
-    local movementCmp = self._collectedComponents['MovementCMP'][1]
-    local controlCommands = mainCharCtrlCmp:getControlCommands()
-    -- 处理移动命令
-    local moveDir = {x = 0.0, y = 0.0}
-    if controlCommands[require('Component.MainCharacterControllerCMP').CharacterControlCommand.MoveForward] == true then
-        moveDir.y = moveDir.y - 1.0
+    local view = self:getComponentsView()
+    -- CHANGE: Use ComponentTypeName instead of ComponentTypeID
+    local mainCharCtrls = view._components[MainCharacterControllerCMP.ComponentTypeName]
+    local movements = view._components[MovementCMP.ComponentTypeName]
+    
+    if not mainCharCtrls or not movements then return end
+    
+    local count = view._count
+    -- Iterate all main characters (usually 1)
+    for i = 1, count do
+        ---@type MainCharacterControllerCMP
+        local mainCharCtrlCmp = mainCharCtrls[i]
+        ---@type MovementCMP
+        local movementCmp = movements[i]
+        
+        -- Optional: Should system update the component if controller is available?
+        -- For now, respecting original logic: only consume commands.
+        -- If self._userInteractController is set, we COULD update it here to move logic from main.lua.
+        -- But for minimal invasion, we keep only consumption logic.
+        
+        -- 处理移动命令
+        local moveDir = {x = 0.0, y = 0.0}
+        if mainCharCtrlCmp:doesCommandIsTriggered_const(CharacterControlCommand.MoveForward) then
+            moveDir.y = moveDir.y - 1.0
+        end
+        if mainCharCtrlCmp:doesCommandIsTriggered_const(CharacterControlCommand.MoveBackward) then
+            moveDir.y = moveDir.y + 1.0
+        end
+        if mainCharCtrlCmp:doesCommandIsTriggered_const(CharacterControlCommand.MoveLeft) then
+            moveDir.x = moveDir.x - 1.0
+        end
+        if mainCharCtrlCmp:doesCommandIsTriggered_const(CharacterControlCommand.MoveRight) then
+            moveDir.x = moveDir.x + 1.0
+        end
+        -- 归一化moveDir
+        local len = math.sqrt(moveDir.x * moveDir.x + moveDir.y * moveDir.y)
+        if len > 0.0 then
+            moveDir.x = moveDir.x / len
+            moveDir.y = moveDir.y / len
+        end
+    
+        movementCmp:setVelocity(
+            moveDir.x * MainCharacterInteractSys.WalkSpeed, -- velocityX
+            moveDir.y * MainCharacterInteractSys.WalkSpeed -- velocityY
+        )
     end
-    if controlCommands[require('Component.MainCharacterControllerCMP').CharacterControlCommand.MoveBackward] == true then
-        moveDir.y = moveDir.y + 1.0
-    end
-    if controlCommands[require('Component.MainCharacterControllerCMP').CharacterControlCommand.MoveLeft] == true then
-        moveDir.x = moveDir.x - 1.0
-    end
-    if controlCommands[require('Component.MainCharacterControllerCMP').CharacterControlCommand.MoveRight] == true then
-        moveDir.x = moveDir.x + 1.0
-    end
-    -- 归一化moveDir
-    local len = math.sqrt(moveDir.x * moveDir.x + moveDir.y * moveDir.y)
-    if len > 0.0 then
-        moveDir.x = moveDir.x / len
-        moveDir.y = moveDir.y / len
-    end
-
-    movementCmp:setVelocity(
-        moveDir.x * MainCharacterInteractSys.WalkSpeed, -- velocityX
-        moveDir.y * MainCharacterInteractSys.WalkSpeed -- velocityY
-    )
 end
 
 
