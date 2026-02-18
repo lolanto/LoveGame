@@ -44,6 +44,8 @@ function love.load()
     systems['PhysicVisualizeSys'] = require('System.PhysicSys').PhysicVisualizeSys:new()
     systems['TriggerSys'] = require('System.Gameplay.TriggerSys').TriggerSys:new()
     systems['TriggerSys']:setPhysicSys(systems['PhysicSys'])
+    systems['BlackHoleSys'] = require('System.Gameplay.BlackHoleSys').BlackHoleSys:new()
+    systems['BlackHoleSys']:setPhysicSys(systems['PhysicSys'])
     systems['TimeRewindSys'] = require('System.Gameplay.TimeRewindSys').TimeRewindSys:new()
     systems['TimeDilationSys'] = require('System.Gameplay.TimeDilationSys').TimeDilationSys:new()
     systems['TimeDilationSys']:setTimeRewindSys(systems['TimeRewindSys'])
@@ -53,6 +55,8 @@ function love.load()
     love.graphics.setBackgroundColor(255,255,255)
 
     local player = MOD_Entity:new('player')
+    player:setEnable(true)
+    player:setVisible(true)
     player:boundComponent(require('Component.DrawableComponents.AnimationCMP').AnimationCMP:new(image, 0, 0, 736, 32, 32, 32))
     player:boundComponent(require('Component.TransformCMP').TransformCMP:new())
     player:boundComponent(require('Component.MainCharacterControllerCMP').MainCharacterControllerCMP:new())
@@ -71,8 +75,12 @@ function love.load()
     player:setNeedRewind(true)
     -- 标记主角为时间管理的例外实体，使其不受慢动作影响（或者说自动补偿）
     player:setTimeScaleException(true)
+    
+    systems['BlackHoleSys']:setMainCharacter(player)
 
     local entityCam = MOD_Entity:new('camera')
+    entityCam:setEnable(true)
+    entityCam:setVisible(true)
     entityCam:boundComponent(require('Component.CameraCMP').CameraCMP:new())
     entityCam:boundComponent(require('Component.TransformCMP').TransformCMP:new())
     entityCam:boundComponent(require('Component.DrawableComponents.DebugTileTexture').DebugTileTextureCMP:new())
@@ -103,6 +111,15 @@ function postUpdate()
 end
 
 function love.update(deltaTime)
+    -- Cleanup destroyed entities
+    local activeEntities = {}
+    for i = 1, #entities do
+        if not entities[i]:isDestroyed() then
+            table.insert(activeEntities, entities[i])
+        end
+    end
+    entities = activeEntities
+
     -- 处理消息中心积压的事件
     require('MessageCenter').MessageCenter.static.getInstance():dispatch()
 
@@ -113,7 +130,7 @@ function love.update(deltaTime)
     local thisFrameEntities = {}
     local visitedEntities = {}
     local function traverseEntity(entity)
-        if entity == nil or visitedEntities[entity] then
+        if entity == nil or visitedEntities[entity] or entity:isDestroyed() then
             return
         end
         visitedEntities[entity] = true
@@ -159,14 +176,17 @@ function love.update(deltaTime)
             ---@cast mainCharCtrlCmp MainCharacterControllerCMP
             mainCharCtrlCmp:update(deltaTime, userInteractController)
         end
+        -- Update BlackHoleSys target to current main character
+        systems['BlackHoleSys']:setMainCharacter(mainCharacterEntity)
     end
     systems['TimeDilationSys']:processUserInput(userInteractController)
-
+    systems['BlackHoleSys']:processUserInput(userInteractController)
     systems['TimeRewindSys']:processUserInput(userInteractController)
 
     systems['TransformUpdateSys']:preCollect()
     systems['MainCharacterInteractSys']:preCollect()
     systems['PatrolSys']:preCollect()
+    systems['BlackHoleSys']:preCollect()
     systems['EntityMovementSys']:preCollect()
     systems['CameraSetupSys']:preCollect()
     systems['DisplaySys']:preCollect()
@@ -182,6 +202,7 @@ function love.update(deltaTime)
             systems['TransformUpdateSys']:collect(entity)
             systems['MainCharacterInteractSys']:collect(entity)
             systems['PatrolSys']:collect(entity)
+            systems['BlackHoleSys']:collect(entity)
             systems['EntityMovementSys']:collect(entity)
             systems['CameraSetupSys']:collect(entity)
             systems['DisplaySys']:collect(entity)
@@ -207,6 +228,7 @@ function love.update(deltaTime)
     else
         systems['MainCharacterInteractSys']:tick(deltaTime)
         systems['PatrolSys']:tick(deltaTime)
+        systems['BlackHoleSys']:tick(deltaTime)
         systems['EntityMovementSys']:tick(deltaTime)
         systems['TransformUpdateSys']:tick(deltaTime)
 

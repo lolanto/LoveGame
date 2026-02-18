@@ -219,9 +219,6 @@ function PhysicCMP:getShape_const()
     return require('utils.ReadOnly').makeReadOnly(self._shape)
 end
 
-function PhysicCMP:getShape()
-    return self._shape
-end
 
 function PhysicCMP:getBody()
     return self._body
@@ -238,7 +235,7 @@ end
 
 ---返回Body的位置(世界空间)
 ---@return number|nil x, number|nil y 位置坐标，假如body不存在则返回nil
-function PhysicCMP:getBodyPosition()
+function PhysicCMP:getBodyPosition_const()
     if self._body then
         return self._body:getPosition()
     end
@@ -255,7 +252,7 @@ end
 
 ---返回Body的旋转(世界空间，弧度)
 ---@return number|nil r 旋转角度，弧度制，假如
-function PhysicCMP:getBodyRotate()
+function PhysicCMP:getBodyRotate_const()
     if self._body then
         return self._body:getAngle()
     end
@@ -279,16 +276,91 @@ function PhysicCMP:isFixedRotation_const()
     return false
 end
 
+---获取线性速度
+---@return number vx, number vy
+function PhysicCMP:getLinearVelocity_const()
+    if self._body then
+        return self._body:getLinearVelocity()
+    end
+    return 0, 0
+end
+
+---设置线性速度
+---@param vx number
+---@param vy number
+function PhysicCMP:setLinearVelocity(vx, vy)
+    if self._body then
+        self._body:setLinearVelocity(vx, vy)
+    end
+end
+
+---获取角速度
+---@return number
+function PhysicCMP:getAngularVelocity_const()
+    if self._body then
+        return self._body:getAngularVelocity()
+    end
+    return 0
+end
+
+---设置角速度
+---@param r number
+function PhysicCMP:setAngularVelocity(r)
+    if self._body then
+        self._body:setAngularVelocity(r)
+    end
+end
+
+---施加力
+---@param fx number
+---@param fy number
+function PhysicCMP:applyForce(fx, fy)
+    if self._body then
+        self._body:applyForce(fx, fy)
+    end
+end
+
+---获取质量
+---@return number
+function PhysicCMP:getMass_const()
+    if self._body then
+        return self._body:getMass()
+    end
+    return 0
+end
+
+---获取Body类型
+---@return string "static"|"dynamic"|"kinematic"
+function PhysicCMP:getBodyType_const()
+    if self._body then
+        return self._body:getType()
+    end
+    return "static" -- Default safe fallback
+end
+
+---获取重力缩放因子
+---@return number
+function PhysicCMP:getGravityScale_const()
+    if self._body then
+        return self._body:getGravityScale()
+    end
+    return 1
+end
+
 --- [TimeRewind] 获取组件的回溯状态
 --- 返回包含组件关键数据的表，若不支持回溯则返回nil
 function PhysicCMP:getRewindState_const()
     if not self._body or self._body:isDestroyed() then return nil end
     local vx, vy = self._body:getLinearVelocity()
     local av = self._body:getAngularVelocity()
+    local ld = self._body:getLinearDamping()
+    local ad = self._body:getAngularDamping()
     return {
         vx = vx,
         vy = vy,
-        angVel = av
+        angVel = av,
+        ld = ld,
+        ad = ad
     }
 end
 
@@ -298,6 +370,8 @@ function PhysicCMP:restoreRewindState(state)
     
     self._body:setLinearVelocity(state.vx, state.vy)
     self._body:setAngularVelocity(state.angVel)
+    if state.ld then self._body:setLinearDamping(state.ld) end
+    if state.ad then self._body:setAngularDamping(state.ad) end
 end
 
 function PhysicCMP:lerpRewindState(stateA, stateB, t)
@@ -310,6 +384,21 @@ function PhysicCMP:lerpRewindState(stateA, stateB, t)
     
     -- 线性插值角速度
     local angVel = stateA.angVel + (stateB.angVel - stateA.angVel) * t
+
+    -- 线性插值阻尼
+    if stateA.ld and stateB.ld then
+        local ld = stateA.ld + (stateB.ld - stateA.ld) * t
+        self._body:setLinearDamping(ld)
+    elseif stateA.ld then
+         self._body:setLinearDamping(stateA.ld)
+    end
+    
+    if stateA.ad and stateB.ad then
+        local ad = stateA.ad + (stateB.ad - stateA.ad) * t
+        self._body:setAngularDamping(ad)
+    elseif stateA.ad then
+         self._body:setAngularDamping(stateA.ad)
+    end
 
     self._body:setLinearVelocity(vx, vy)
     self._body:setAngularVelocity(angVel)

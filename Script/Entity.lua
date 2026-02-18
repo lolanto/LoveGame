@@ -29,10 +29,37 @@ function Entity:new(nameOfEntity)
     instance._boundingQuad = nil -- Entity的包围盒
     instance._isVisible = false -- 当前Entity是否可见
     instance._isEnable = false -- 当前Entity是否被激活
+    instance._isDestroyed = false -- 是否被销毁
     instance._needRewind = false -- 是否需要回溯
     instance._isTimeScaleException = false -- 是否不受时间缩放影响
     instance._level = nil -- Entity所属的Level ReadOnly
     return instance
+end
+
+function Entity:markForDeletion()
+    self._isDestroyed = true
+end
+
+function Entity:isDestroyed()
+    return self._isDestroyed
+end
+
+--- 设置实体是否激活
+function Entity:setEnable(value)
+    self._isEnable = value
+end
+
+function Entity:isEnable_const()
+    return self._isEnable
+end
+
+--- 设置实体是否可见
+function Entity:setVisible(value)
+    self._isVisible = value
+end
+
+function Entity:isVisible_const()
+    return self._isVisible
 end
 
 --- 获取实体的名称

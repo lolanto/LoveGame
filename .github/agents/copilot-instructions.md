@@ -28,7 +28,6 @@ cd src; pytest; ruff check .
 - 1-data-driven-levels: Added Lua 5.1 (LuaJIT via Love2D) + Love2D Engine, Internal ECS Framework
 - 1-data-driven-levels: Added Lua 5.1 (LuaJIT via Love2D) + Love2D Engine, Internal ECS Framework
 
-- 1-data-driven-levels: Added [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION] + [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION]
 
 <!-- MANUAL ADDITIONS START -->
 <!-- MANUAL ADDITIONS END -->

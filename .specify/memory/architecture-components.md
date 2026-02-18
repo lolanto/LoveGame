@@ -21,6 +21,8 @@ This document indexes all the ECS Components currently implemented in the LoveGa
 ## Gameplay Logic Components
 - [MainCharacterControllerCMP](./components/main-character-controller-component.md): Buffers user input for the player character.
 - [PatrolCMP](./components/patrol-component.md): Configuration for AI patrol behavior.
+- [GravitationalFieldCMP](./components/gravitational-field-component.md): Defines continuous attraction force parameters.
+- [LifeTimeCMP](./components/lifetime-component.md): Manages entity existence duration.
 
 ## Templates
 - [template component](./components/template-component.md)

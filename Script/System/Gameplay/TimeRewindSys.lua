@@ -99,27 +99,33 @@ function TimeRewindSys:record(deltaTime)
 
     local snapshot = {}
     for _, entity in ipairs(self._rewindEntities) do
-        local components = entity._components 
-        
-        local entitySnapshot = {}
-        local hasData = false
-        
-        for typeID, component in pairs(components) do
-            if component and component.getRewindState_const then
-                local state = component:getRewindState_const()
-                if state then
-                    entitySnapshot[typeID] = state
-                    hasData = true
-                end
-                --- 假如当前正在Debug模式，应该强制检查组件是否实现了restoreRewindState方法
-                if require('Config').Config.IS_DEBUG then
-                    assert(component.restoreRewindState ~= nil, string.format("Component %s of Entity %s does not implement restoreRewindState method required for Time Rewind!", typeID, entity._name))
+        -- Only record enabled entities
+        -- If an entity is disabled, we consider it "non-existent" in the timeline,
+        -- so we don't record its state. This ensures that when we rewind over this
+        -- period later, the entity will be correctly disabled.
+        if entity:isEnable_const() then
+            local components = entity._components 
+            
+            local entitySnapshot = {}
+            local hasData = false
+            
+            for typeID, component in pairs(components) do
+                if component and component.getRewindState_const then
+                    local state = component:getRewindState_const()
+                    if state then
+                        entitySnapshot[typeID] = state
+                        hasData = true
+                    end
+                    --- 假如当前正在Debug模式，应该强制检查组件是否实现了restoreRewindState方法
+                    if require('Config').Config.IS_DEBUG then
+                        assert(component.restoreRewindState ~= nil, string.format("Component %s of Entity %s does not implement restoreRewindState method required for Time Rewind!", typeID, entity._name))
+                    end
                 end
             end
-        end
-        
-        if hasData then
-            snapshot[entity] = entitySnapshot
+            
+            if hasData then
+                snapshot[entity] = entitySnapshot
+            end
         end
     end
     
@@ -182,17 +188,23 @@ function TimeRewindSys:rewind(deltaTime)
         t = (self._currentRecordTime - snapshotA.time) / (snapshotB.time - snapshotA.time)
     end
     
-    -- Iterate all entities in A (or B? Union ideally)
-    -- For simplicity, interpolate entities present in A.
-    for entity, entitySnapshotA in pairs(snapshotA.data) do
+    -- Iterate all tracked entities to handle enable/disable state
+    for _, entity in ipairs(self._rewindEntities) do
+        local entitySnapshotA = snapshotA.data[entity]
         local entitySnapshotB = snapshotB.data[entity]
         
-        -- If entity existed in both frames interpolate
-        if entitySnapshotB then
+        if entitySnapshotA then
+            -- Entity existed at this time: Enable it
+            if entity.setEnable then entity:setEnable(true) end
+            if entity.setVisible then entity:setVisible(true) end
+            
             for typeID, stateA in pairs(entitySnapshotA) do
                 local component = entity._components[typeID]
-                local stateB = entitySnapshotB[typeID]
-                
+                local stateB = nil
+                if entitySnapshotB then
+                    stateB = entitySnapshotB[typeID]
+                end
+
                 if component and stateB then
                      if component.lerpRewindState then
                         component:lerpRewindState(stateA, stateB, t)
@@ -200,18 +212,13 @@ function TimeRewindSys:rewind(deltaTime)
                         component:restoreRewindState(stateA)
                      end
                 elseif component and component.restoreRewindState then
-                     -- B missing, fallback to A
                      component:restoreRewindState(stateA)
                 end
             end
         else
-            -- Entity in A but not B? Restore A
-             for typeID, stateA in pairs(entitySnapshotA) do
-                local component = entity._components[typeID]
-                if component and component.restoreRewindState then
-                    component:restoreRewindState(stateA)
-                end
-             end
+            -- Entity did not exist at this time: Disable it
+            if entity.setEnable then entity:setEnable(false) end
+            if entity.setVisible then entity:setVisible(false) end
         end
     end
 end

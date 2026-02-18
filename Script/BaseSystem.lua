@@ -72,6 +72,11 @@ end
 ---@param entity Entity 目标Entity，将会从这个entity身上搜集组件
 ---@return boolean 搜集成功返回true，否则返回false
 function BaseSystem:collect(entity)
+    -- 如果Entity未激活，且不是强制处理的情况（这里暂定都遵循isEnable），则跳过
+    if entity.isEnable_const and not entity:isEnable_const() then
+        return false
+    end
+
     local ignoreThisEntity = false
     local errorOccurred = false
     local collectedComponents = {}

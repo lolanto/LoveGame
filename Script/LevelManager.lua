@@ -38,7 +38,12 @@ function LevelManager:new()
     instance._previousLevel = nil
     instance._nextLevelModule = nil
     instance._unloadLevelsList = {}
+    instance._pendingSpawnEntities = {}
     return instance
+end
+
+function LevelManager:spawnEntity(entity)
+    table.insert(self._pendingSpawnEntities, entity)
 end
 
 function LevelManager:getCurrentLevel()
@@ -203,6 +208,19 @@ end
 function LevelManager:_buildEntity(entityData, parent, systems, actions)
     local MOD_Entity = require('Entity')
     local entity = MOD_Entity:new(entityData.name)
+    
+    -- Fix: Enable and set visible by default for loaded entities
+    if entityData.enable ~= nil then
+        entity:setEnable(entityData.enable)
+    else
+        entity:setEnable(true)
+    end
+
+    if entityData.visible ~= nil then
+        entity:setVisible(entityData.visible)
+    else
+        entity:setVisible(true)
+    end
     
     if entityData.tag then
         -- entity:setTag(entityData.tag) -- if setTag exists
@@ -394,6 +412,19 @@ function LevelManager:loadLevel(levelObj, entities, systems)
 end
 
 function LevelManager:tick(entities, systems)
+    if #self._pendingSpawnEntities > 0 then
+        if entities then
+            for i = 1, #self._pendingSpawnEntities do
+                local entity = self._pendingSpawnEntities[i]
+                table.insert(entities, entity)
+                if self._currentLevel and self._currentLevel.addEntity then
+                    self._currentLevel:addEntity(entity)
+                end
+            end
+        end
+        self._pendingSpawnEntities = {}
+    end
+
     if #self._unloadLevelsList > 0 then
         for i = 1, #self._unloadLevelsList do
             local levelToUnload = self._unloadLevelsList[i]

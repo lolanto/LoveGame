@@ -27,6 +27,7 @@ The `Entity` class is a container that holds:
 **Key Responsibilities:**
 *   Managing component lifecycle (`boundComponent`, `unboundComponent`).
 *   Managing hierarchy (`boundChildEntity`).
+*   Managing active state (`setEnable`) and visibility (`setVisible`).
 *   Providing Component retrieval (Cast to ReadOnly or Mutable).
 
 ### 2.2 Component (`Script/BaseComponent.lua`)
@@ -69,7 +70,8 @@ The main loop (orchestrated in `main.lua` and `LevelManager`) follows a specific
 7.  **System Execution (`tick`)**:
     *   Systems iterate their own `_collectedComponents` lists.
     *   Special Order: `TimeDilation` and `TimeRewind` often run or influence `deltaTime` before others.
-    *   Physics calculation -> Transform updates -> Logic -> Rendering.
+    *   Physics calculation -> Logic -> Transform updates -> Rendering.
+    *   **Constraint**: `CameraSetupSys` MUST execute *after* all gameplay systems and `TransformUpdateSys`. It relies on the final world transforms of all entities (especially the camera and its targets) to be fully resolved for the current frame to calculate the view matrix correctly without assertions failing (dirty flags).
 8.  **Post-Update**: Cleanup.
 
 ## 4. Time Management Subsystem
@@ -91,3 +93,62 @@ The game features core mechanics around Time Manipulation (Rewind, Dilation). Th
 *   `Script/System/`: All System classes.
     *   *Convention*: Name ends in `Sys.lua` (e.g., `PhysicSys.lua`).
 *   `Script/utils/`: Shared utilities (`ReadOnly.lua`, `MUtils.lua`).
+
+## 6. Level & Scene Management
+
+The `LevelManager` (`Script/LevelManager.lua`) orchestrates the game world state, acting as the bridge between Data-Driven Level definitions and the ECS runtime.
+
+### 6.1 Level Lifecycle
+
+The LevelManager employs an **Atomic Transition** strategy for level switching to ensure state consistency.
+
+*   **Loading Flow via `loadLevel`**:
+    1.  **Implicit Unload**: Immediately unloads the `_currentLevel` (if any) to prevent entities from overlapping or leaking.
+    2.  **Cleanup**: Processes any pending unloads in `_unloadLevelsList` to ensure a clean slate.
+    3.  **Instantiation**: Creates a new instance of the target Level class (or `VirtualLevel`).
+    4.  **Population**: Calls `level:load(systems)` to parse data files, build entities, and inject them into the main `entities` array.
+    5.  **Event**: Broadcasts `Event_LevelLoaded`.
+
+*   **Unloading Flow**:
+    *   Iterates through entities tracked by the Level instance.
+    *   Invokes `entity:onLeaveLevel()`.
+    *   Removes entities from the global `entities` table.
+    *   Broadcasts `Event_LevelUnloaded`.
+
+### 6.2 Data-Driven Levels ("Virtual Levels")
+
+While Levels can be Lua classes, the engine supports **Data-Driven Levels** loaded directly from `Resources/Level/*.lua` files.
+
+*   **Behavior**: `LevelManager:requestLoadLevel('LevelName')` detects if a corresponding Lua class exists. If not, it looks for `Resources/Level/LevelName.lua` and wraps it in a **VirtualLevel** closure.
+*   **Structure**: Data files return a table describing the scene graph:
+    ```lua
+    return {
+        name = "Level1",
+        entities = {
+            {
+                name = "player",
+                enable = true, -- Default: true
+                visible = true, -- Default: true
+                components = { ... },
+                children = { ... }
+            }
+        }
+    }
+    ```
+*   **Sandbox**: Data files are loaded in a restricted environment for safety.
+
+### 6.3 Entity Instantiation Logic
+
+The `_buildEntity` pipeline is responsible for constructing entities from data:
+
+1.  **Factory**: Creates `Entity` instance.
+2.  **Default State**:
+    *   `isEnable`: Defaults to **true** (Active).
+    *   `isVisible`: Defaults to **true** (Visible).
+    *   *Note*: Explicit values in data override defaults.
+3.  **Component Injection**:
+    *   Resolves component classes by name (e.g., `PhysicCMP`).
+    *   Performs **Dependency Injection** (e.g., injecting `PhysicSys:getWorld()` into physics components).
+    *   Applies property overrides via Setters (e.g., `worldPosition` -> `setWorldPosition`).
+4.  **Hierarchy**: Recursively builds and binds children.
+5.  **Scripting**: Links "Action Scripts" (from `Script/Level/LevelName.lua`) to component callbacks if defined.

@@ -32,6 +32,10 @@ end
 ---@param entity Entity 目标Entity，将会从这个entity身上搜集组件
 ---@return nil
 function CameraSetupSys:collect(entity)
+    if not entity:isEnable_const() then
+        return
+    end
+
     local lenOfCameraCmps = #self._collectedComponents['CameraCMP']
     local lenOfTransformCmps = #self._collectedComponents['TransformCMP']
     assert(lenOfCameraCmps == lenOfTransformCmps, string.format("The count of CameraCMP %d should be equal to the count of TransformCMP %d", lenOfCameraCmps, lenOfTransformCmps))
