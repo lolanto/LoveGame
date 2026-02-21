@@ -19,6 +19,10 @@ end
 ---@param consumeInfos {string:InteractConsumeInfo}
 ---@return boolean 假如都满足组合要求，返回true，否则返回false
 function UserInteractController:tryToConsumeInteractInfo(consumeInfos)
+    -- If Interaction Mode is active, check if the caller is allowed (TODO: Allowlist logic)
+    -- For now, relying on World loop pause to prevent standard systems from calling this.
+    -- However, specific systems (like Initiator) WILL call this.
+    
     local consumeSucceed = true
     for key, info in pairs(consumeInfos) do
         if not info:doCheck(self._interactStates[key]) then

@@ -116,7 +116,8 @@ function PhysicSys:tick(deltaTime)
         end
         
         -- [TimeManager Support] 
-        if math.abs(scale - 1.0) > 0.001 then
+        -- Avoid division by zero when scale is near 0. If scale is 0, physics is paused anyway.
+        if math.abs(scale - 1.0) > 0.001 and scale > 0.0001 then
             local entity = physicCmp:getEntity_const() -- Use const variant if available or just getEntity
             if entity and entity:isTimeScaleException_const() then
                 local vx, vy = physicCmp:getLinearVelocity_const()

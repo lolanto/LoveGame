@@ -30,6 +30,12 @@ function MainCharacterInteractSys:setupUserInteractController(userInteractContro
 end
 
 function MainCharacterInteractSys:tick(deltaTime)
+    -- [Interaction Manager] Block Input
+    local InteractionManager = require('InteractionManager').InteractionManager.static.getInstance()
+    if InteractionManager:isActive() then
+        return
+    end
+
     MOD_BaseSystem.tick(self, deltaTime)
     
     local view = self:getComponentsView()

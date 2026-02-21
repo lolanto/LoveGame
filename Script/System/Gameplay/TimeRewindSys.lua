@@ -64,6 +64,9 @@ function TimeRewindSys:getIsRewinding()
 end
 
 function TimeRewindSys:tick(deltaTime)
+    local InteractionManager = require('InteractionManager').InteractionManager.static.getInstance()
+    if InteractionManager:isActive() then return end
+
     if self._isRewinding then
         self:rewind(deltaTime)
     else
@@ -74,6 +77,9 @@ end
 --- 处理用户输入，决定是否启动回放功能
 --- @param userInteractController UserInteractController 用户交互控制器
 function TimeRewindSys:processUserInput(userInteractController)
+    local InteractionManager = require('InteractionManager').InteractionManager.static.getInstance()
+    if InteractionManager:isActive() then return end
+
     local _keyPressedCheckFunc = function(keyObj)
         if keyObj == nil then return false end
         local isPressed, pressingDuration = keyObj:getIsPressed()

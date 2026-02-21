@@ -66,6 +66,10 @@ function love.load()
     local timeDilationSys = TimeDilationSys:new(world)
     reg(timeDilationSys)
 
+    -- [Test] Interaction System
+    local TestInteractionSys = require('System.Tests.TestInteractionSys')
+    reg(TestInteractionSys:new(world))
+
     local image = love.graphics.newImage("Resources/debug_characters.png")
     love.graphics.setBackgroundColor(255,255,255)
 
@@ -123,6 +127,7 @@ end
 
 function love.update(deltaTime)
     local world = require('World').World.static.getInstance()
+    local interactMgr = require('InteractionManager').InteractionManager.static.getInstance()
     
     require('MessageCenter').MessageCenter.static.getInstance():dispatch()
 
@@ -130,6 +135,7 @@ function love.update(deltaTime)
     
     require('LevelManager').LevelManager.static.getInstance():tick()
     
+    interactMgr:tick(deltaTime, userInteractController)
     world:update(deltaTime, userInteractController)
 
     postUpdate()
@@ -142,6 +148,9 @@ function love.draw()
     
     local world = require('World').World.static.getInstance()
     world:draw()
+    
+    local interactMgr = require('InteractionManager').InteractionManager.static.getInstance()
+    interactMgr:draw()
 end
 
 function love.mousepressed(x, y, button, istouch, presses)

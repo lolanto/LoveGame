@@ -25,7 +25,7 @@ end
 --- 设置全局时间缩放比例
 --- @param scale number 时间缩放比例 (e.g. 0.1 for slow motion, 1.0 for normal)
 function TimeManager:setTimeScale(scale)
-    assert(type(scale) == 'number' and scale > 0.0001, "Time scale must be a positive number")
+    assert(type(scale) == 'number' and scale >= 0, "Time scale must be a positive number or zero")
     self._globalTimeScale = scale
 end
 

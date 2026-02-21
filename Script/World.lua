@@ -351,7 +351,16 @@ function World:update(dt, userInteractController)
     local physicSys = self:getSystem('PhysicSys')
     local triggerSys = self:getSystem('TriggerSys')
     local cameraSetupSys = self:getSystem('CameraSetupSys')
+    local testInteractionSys = self:getSystem('TestInteractionSys')
     
+    -- [Interaction Manager] Check Phase
+    -- If Interaction Mode is active, the standard World Loop is paused.
+    -- InteractionManager (ticked in main.lua) assumes control of specific systems.
+    local interactMgr = require('InteractionManager').InteractionManager.static.getInstance() 
+    if interactMgr:isActive() then
+        return
+    end
+
     local mainCharacterEntity = self:getMainCharacter()
     if mainCharacterEntity ~= nil then
         local mainCharCtrlCmp = mainCharacterEntity:getComponent('MainCharacterControllerCMP')
@@ -393,6 +402,7 @@ function World:update(dt, userInteractController)
         physicSys:tick(dt)
         transformSys:tick(dt) -- Re-update after physics
         triggerSys:tick(dt)
+        if testInteractionSys then testInteractionSys:tick(dt) end
     end
     
     local displaySys = self:getSystem('DisplaySys')
@@ -407,6 +417,10 @@ function World:draw()
     local displaySys = self:getSystem('DisplaySys')
     if displaySys then
         displaySys:draw()
+    end
+    local testInteractionSys = self:getSystem('TestInteractionSys')
+    if testInteractionSys then
+        testInteractionSys:draw()
     end
 end
 

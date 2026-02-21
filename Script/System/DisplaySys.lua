@@ -71,6 +71,7 @@ function DisplaySys:draw()
         drawableCmp:draw(transformCmp:getWorldTransform_const())
         drawCallCount = drawCallCount + 1
     end
+
 end
 
 return {
