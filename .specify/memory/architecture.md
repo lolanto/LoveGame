@@ -78,13 +78,28 @@ The main loop (orchestrated in `main.lua` and `Script/World.lua`) follows a spec
     *   Process `_pendingRemoves` (Remove from World/Views -> Zombie State).
     *   Garbage Collection (Destroy Zombies with refCount == 0).
     *   Clear Collision Events.
-4.  **System Update**:
+4.  **Interaction Mode Check**:
+    *   If `InteractionManager` is active, the **Standard Update (Step 5)** is skipped.
+    *   Instead, `InteractionManager` manually ticks:
+        *   `CameraSetupSys` (Visuals)
+        *   `DisplaySys` (Rendering)
+        *   The **Initiator System** (e.g., `BlackHoleSys`) creating the interaction.
+5.  **Standard System Update** (If not in Interaction Mode):
     *   `World` iterates registered systems and calls `tick(dt)`.
     *   Systems iterate their `ComponentsView` to execute logic.
     *   **Logic Flow**: Physics -> Logic -> Transform Updates -> Rendering.
-5.  **Drawing**: `World` iterates systems and calls `draw()`.
+5.  **Drawing**: `World` iterates systems and calls `draw()`. `InteractionManager` has its own `draw()`.
 
-## 4. Time Management Subsystem
+## 4. Interaction Mode & Special States
+
+The ECS loop is interruptible by the **InteractionManager** (`Script/InteractionManager.lua`) to support complex gameplay mechanics (e.g., Skill targeting, Quick Time Events).
+
+*   **Activation**: A system calls `InteractionManager:requestStart(self, timeout, context)`.
+*   **State**: The Global World update is paused. Physics and irrelevant logic stop ticking.
+*   **Delegation**: The initiating system takes control. It receives `tick_interaction(dt, input)` callbacks from the manager.
+*   **Visuals**: Camera and Rendering systems continue to update to prevent the screen from freezing, but the game state remains static unless modified by the initiator.
+
+## 5. Time Management Subsystem
 
 The game features core mechanics around Time Manipulation (Rewind, Dilation). The ECS supports this natively:
 
@@ -95,7 +110,7 @@ The game features core mechanics around Time Manipulation (Rewind, Dilation). Th
 *   **Time Dilation (`TimeDilationSys`)**:
     *   Modifies global flow, but specific entities can be exceptions (`isTimeScaleException`).
 
-## 5. Directory Structure & Extensions
+## 6. Directory Structure & Extensions
 
 *   `Script/Component/`: All Component classes.
     *   *Convention*: Name ends in `CMP.lua` (e.g., `TransformCMP.lua`).
@@ -104,11 +119,11 @@ The game features core mechanics around Time Manipulation (Rewind, Dilation). Th
     *   *Convention*: Name ends in `Sys.lua` (e.g., `PhysicSys.lua`).
 *   `Script/utils/`: Shared utilities (`ReadOnly.lua`, `MUtils.lua`).
 
-## 6. Level & Scene Management
+## 7. Level & Scene Management
 
 The `LevelManager` (`Script/LevelManager.lua`) orchestrates the game world state, acting as the bridge between Data-Driven Level definitions and the ECS runtime.
 
-### 6.1 Level Lifecycle
+### 7.1 Level Lifecycle
 
 The LevelManager employs an **Atomic Transition** strategy for level switching to ensure state consistency.
 
@@ -125,7 +140,7 @@ The LevelManager employs an **Atomic Transition** strategy for level switching t
     *   Calls `World:removeEntity()` for each root entity to queue for destruction.
     *   Broadcasts `Event_LevelUnloaded`.
 
-### 6.2 Data-Driven Levels ("Virtual Levels")
+### 7.2 Data-Driven Levels ("Virtual Levels")
 
 While Levels can be Lua classes, the engine supports **Data-Driven Levels** loaded directly from `Resources/Level/*.lua` files.
 
@@ -147,7 +162,7 @@ While Levels can be Lua classes, the engine supports **Data-Driven Levels** load
     ```
 *   **Sandbox**: Data files are loaded in a restricted environment for safety.
 
-### 6.3 Entity Instantiation Logic
+### 7.3 Entity Instantiation Logic
 
 The `_buildEntity` pipeline is responsible for constructing entities from data:
 

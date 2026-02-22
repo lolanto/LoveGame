@@ -45,6 +45,13 @@ Templates to Update:
     *   [architecture-components.md](./architecture-components.md) for Components.
 *   **Sync Rule**: Any modification to a System or Component's logic MUST be accompanied by a simultaneous update to its corresponding documentation file in `.specify/memory/systems/` or `.specify/memory/components/`.
 
+### VI. Modal Gameplay Architecture
+**Systems Must Support Selective Execution.**
+*   The game supports distinct modes (e.g., Standard Gameplay, Interaction Mode, Menus).
+*   **World Pause**: In specific modes (like Interaction Mode), the main World loop pauses.
+*   **Manual Ticking**: Systems initiating these modes (Initiators) effectively "take over" the game loop and must be capable of running in isolation via `tick_interaction(dt, input)` or `tick(dt)` without the rest of the world updating.
+*   **Context Awareness**: Visual systems (Camera, Display) must remain active regardless of the simulation state to maintain player feedback.
+
 ## Technical Constraints & Architecture
 
 ### Technology Stack
