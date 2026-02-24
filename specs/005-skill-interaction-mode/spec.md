@@ -93,13 +93,17 @@ As a player, I want my aiming process to be ignored by the time rewind mechanic,
 - **Update Loop (Tick)**:
   - **Pause**: `World` updates for standard gameplay entities (Physics, AI, Movement, Damage, Death) must be entirely skipped (not ticked).
   - **Resume**: Physics/Game Logic resumes from exact pre-interaction state.
+  - **Effects**: `World:clean()` is called to ensure entities marked for removal are processed.
   - **Render**: Continue to render the last frame of the game world (background).
-  - **Allowlist**: Must allow specific systems (e.g., the `ActiveSkillSystem`, `CameraSystem`, `DisplaySys`) to continue updating.
-    - **Dynamic**: The specific skill system requesting the mode is automatically allowed.
+  - **Allowlist**: The `InteractionManager` manually ticks specific compatible systems:
+      - The **Initiator System** (via `tick_interaction` or `tick`).
+      - `TransformUpdateSys` (for camera hierarchy updates).
+      - `CameraSetupSys` (to maintain camera fix).
+      - `DisplaySys` (to render the drawing queue). **Note**: `DisplaySys` must conditionally pause sub-component updates (like Animations) based on user interaction state to prevent "ghost" state progression.
 
 - **Time Scale**:
-  - `dt` (delta time) passed to the allowed systems must be unscaled (Real Time).
-  - No `dt` is passed to the background game world (as those systems are not ticked).
+  - `dt` (delta time) is passed directly to the allowed systems (Real Time).
+  - The global `TimeManager` time scale is not necessarily modified; instead, the main `World` update loop is bypassed.
 
 ### Skill System Integration & Reference Implementation
 - **Decoupled Design**: The Interaction Mode itself **does not** create or manage indicators, nor determine success/failure of the skill.

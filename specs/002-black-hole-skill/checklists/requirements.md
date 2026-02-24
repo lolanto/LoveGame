@@ -32,5 +32,7 @@
 ## Notes
 
 - Clarifications on Force Falloff and Center Interaction have been incorporated into the spec.
-- User request updates: Parameterized values, Debug Visualization, and 'T' key binding (configurable) added.
+- User request updates: Parameterized values, Debug Visualization.
+- **2026-02-22 Update**: Added Interaction Mode logic (Indicator, WASD control, Valid/Invalid states, Timeout). Specific Component names included per user request for clarity in this phase.
+- **2026-02-24 Update**: Changed key to 'O', added ESC cancel logic, set Timeout to Real Time, mandated UserInteractController for all inputs.
 - Ready for planning.

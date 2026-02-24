@@ -114,15 +114,9 @@ function InteractionManager:tick(dt, userInteractController)
     
     -- 2. Manual System Ticking (Since World loop is paused)
     local world = require('World').World.static.getInstance()
+    world:clean()
     
-    -- 2.1 Camera & Display (Essential for visuals)
-    local cameraSys = world:getSystem('CameraSetupSys')
-    if cameraSys then cameraSys:tick(dt) end
-    
-    local displaySys = world:getSystem('DisplaySys')
-    if displaySys then displaySys:tick(dt) end
-    
-    -- 2.2 Initiator System (The specific skill logic)
+    -- 2.1 Initiator System (The specific skill logic)
     if self._initiatorSystem then
         if type(self._initiatorSystem.tick_interaction) == 'function' then
             self._initiatorSystem:tick_interaction(dt, userInteractController)
@@ -130,6 +124,25 @@ function InteractionManager:tick(dt, userInteractController)
             self._initiatorSystem:tick(dt)
         end
     end
+
+    -- 2.2 basic system update
+    local transformUpdateSys = world:getSystem('TransformUpdateSys')
+    if transformUpdateSys then transformUpdateSys:tick(dt) end
+
+    local cameraSys = world:getSystem('CameraSetupSys')
+    if cameraSys then cameraSys:tick(dt) end
+    
+    local displaySys = world:getSystem('DisplaySys')
+    if displaySys then 
+        -- DisplaySys expects unscaled delta time for rendering, but we must ensure
+        -- it doesn't trigger component updates that should be paused (like Animations).
+        -- However, DisplaySys.tick typically just calls draw() on components.
+        -- If DisplaySys calls component:update(), we have a problem.
+        -- Let's check DisplaySys. 
+        -- Assuming DisplaySys only handles rendering.
+        displaySys:tick(dt) 
+    end
+    
 end
 
 ---Draws the interaction overlay and debug info

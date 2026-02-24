@@ -24,6 +24,9 @@ function DebugColorCircleCMP:new(color, radius)
     return instance
 end
 
+function DebugColorCircleCMP:setColor(color)
+    self._color = color
+end
 
 --- 当前组件发起绘制
 --- @param transform love.Transform 用来指导绘制位置的变换矩阵,目前设计是世界空间下的位置

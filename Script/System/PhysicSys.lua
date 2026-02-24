@@ -52,6 +52,10 @@ function PhysicSys:new(world)
 
 end
 
+function PhysicSys:getPhysicsWorld()
+    return self._physicsWorld
+end
+
 --- 获取当前帧的碰撞事件列表 (Deprecated, use World instead)
 function PhysicSys:getCollisionEvents()
     -- return self._collisionEvents
