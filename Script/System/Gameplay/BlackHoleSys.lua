@@ -161,7 +161,12 @@ function BlackHoleSys:processInteractionInput(uic)
         local curX, curY = transCmp:getTranslate_const()
         local nextX = curX + moveDir.x * moveSpeed * dt
         local nextY = curY + moveDir.y * moveSpeed * dt
-        transCmp:setPosition(nextX, nextY)
+
+        -- Clamp to Camera View bounds
+        local margin = Config.BlackHole.Radius or 0.5
+        local _, clampedX, clampedY = self._world:isWorldPointInsideCamera_const(nextX, nextY, margin)
+        
+        transCmp:setPosition(clampedX, clampedY)
     end
     
     -- 3. Handle Cancel (ESC)

@@ -424,4 +424,52 @@ function World:draw()
     end
 end
 
+---Check if a world point is inside the main camera view. Also returns the clamped position.
+---@param x number
+---@param y number
+---@param margin number|nil Default 0
+---@return boolean isInside
+---@return number clampedX
+---@return number clampedY
+function World:isWorldPointInsideCamera_const(x, y, margin)
+    local mainCamera = self._mainCamera
+    if not mainCamera then return true, x, y end -- If no camera, assume everywhere is valid
+
+    local transformCmp = mainCamera:getComponent('TransformCMP')
+    if not transformCmp then return true, x, y end
+    
+    -- MUST use World Position, as camera might depend on parent (e.g. Player)
+    -- getTranslate_const returns local position!
+    local camX, camY = transformCmp:getWorldPosition_const()
+    local renderEnv = require('RenderEnv').RenderEnv.getGlobalInstance_const()
+    
+    local ppm = renderEnv:getPixelsPerMeter_const()
+    local screenW = love.graphics.getPixelWidth()
+    local screenH = love.graphics.getPixelHeight()
+    
+    local actualViewW = screenW / ppm
+    local actualViewH = screenH / ppm
+    
+    local halfW = actualViewW * 0.5
+    local halfH = actualViewH * 0.5
+    
+    margin = margin or 0
+    
+    -- Note: camX/camY are the center of the camera view in world coordinates
+    local minX = camX - halfW + margin
+    local maxX = camX + halfW - margin
+    local minY = camY - halfH + margin
+    local maxY = camY + halfH - margin
+    
+    -- Safety check: if margin is too large, collapse to center
+    if minX > maxX then minX, maxX = camX, camX end
+    if minY > maxY then minY, maxY = camY, camY end
+    
+    local clampedX = math.max(minX, math.min(x, maxX))
+    local clampedY = math.max(minY, math.min(y, maxY))
+    
+    local isInside = (x >= minX and x <= maxX and y >= minY and y <= maxY)
+    return isInside, clampedX, clampedY
+end
+
 return { World = World }

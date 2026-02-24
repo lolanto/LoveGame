@@ -47,6 +47,8 @@ Refactor the current ECS system management to introduce a central `World` single
         -   `World:setMainCharacter(entity)`: Sets the player entity.
         -   `World:getMainCamera()`: Returns the main camera entity or nil.
         -   `World:setMainCamera(entity)`: Sets the main camera entity.
+        -   **Camera Utility**:
+            -   `World:isWorldPointInsideCamera_const(x, y, margin)`: Checks if a world point is within the main camera's view (considering screen size and zoom). Returns `isInside`, plus the `clampedX` and `clampedY` coordinates constrained to the view.
     -   These accessors ensure Systems can easily retrieve the player/camera without searching or maintaining their own references (removing globals like `mainCharacterEntity` in `main.lua`).
 -   **Collision Event Management**:
     -   `World` maintains a `_collisionEvents` list.

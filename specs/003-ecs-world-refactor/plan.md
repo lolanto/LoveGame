@@ -143,6 +143,7 @@ Script/
         -   `World:getActiveEntities()`: Return filtered list of **Enabled** entities.
     -   Implement "Pending Destruction" queue and GC tick.
     -   Implement `World:recordCollisionEvent(event)`, `World:getCollisionEvents()`, and `World:clearCollisionEvents()` for transient frame-based event handling.
+    -   Implement `World:isWorldPointInsideCamera_const(x, y, margin)` for UI/Gameplay systems to query visibility.
     -   Update `TimeRewindSys` to manipulate Entity ref counts.
 
 4.  **Main Loop Refactor**:

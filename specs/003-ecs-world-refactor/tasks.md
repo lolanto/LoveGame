@@ -61,6 +61,7 @@
 - [x] T042 Update `World:clean()` to process `_dirtyEntities` list (re-evaluate Views for changed archetypes) before clear. [Script/World.lua](Script/World.lua)
 - [x] T036 Implement `World:getAllManagedEntities()` (all valid) and `World:getActiveEntities()` (enabled only) [Script/World.lua](Script/World.lua)
 - [x] T037 Implement `World:recordCollisionEvent(event)`, `World:getCollisionEvents()`, and `World:clearCollisionEvents()` [Script/World.lua](Script/World.lua)
+- [x] T056 Implement `World:isWorldPointInsideCamera_const(x, y, margin)` for camera bounds checking [Script/World.lua](Script/World.lua)
 - [x] T038 Update `Script/System/PhysicSys.lua` to push collision events to `World` instead of internal table [Script/System/PhysicSys.lua](Script/System/PhysicSys.lua)
 - [x] T039 Update `Script/System/Gameplay/TriggerSys.lua` to pull collision events from `World` and remove dependency on `PhysicSys` [Script/System/Gameplay/TriggerSys.lua](Script/System/Gameplay/TriggerSys.lua)
 - [x] T027 Implement `World` Garbage Collection tick: destroy entities in Pending Destruction list only if `refCount == 0` [Script/World.lua](Script/World.lua)
