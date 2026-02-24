@@ -21,7 +21,7 @@
 
 - [x] T007 [US1] Implement `requestStart` in `InteractionManager`: Set active state.
 - [x] T008 [US1] Implement `requestEnd` in `InteractionManager`: Clear active state.
-- [x] T009 [US1] Implement `tick` in `InteractionManager`: If active, manually tick Initiator and allow-listed systems (`TransformUpdateSys`, `CameraSetupSys`, `DisplaySys`) with `userInteractController`.
+- [x] T009 [US1] Implement `tick` in `InteractionManager`: If active, manually tick Initiator (calling `processUserInput` then `tick_interaction`) and allow-listed systems (`TransformUpdateSys`, `CameraSetupSys`, `DisplaySys`) with `userInteractController`.
 - [x] T009.5 [US1] Modify `DisplaySys` to pause Animation updates when `InteractionManager` is active, ensuring proper time rewind state continuity.
 - [x] T010 [P] [US1] Create test system `Script/System/Tests/TestInteractionSys.lua` to trigger interaction on key press. Implement `tick_interaction` if needed.
 - [x] T011 [US1] Verify physics pausing: Run `TestInteractionSys`, trigger mode, ensure entities stop (due to World loop skip).
@@ -29,7 +29,7 @@
 ## Phase 4: User Story 2 - Skill-Specific Behavior & Aiming
 **Goal**: Allow specific logic (indicator) to run while the world is paused. (Priority P1)
 
-- [x] T012 [US2] Update `InteractionManager` logic: `tick(dt, uic)` calls `initiator:tick_interaction(dt, uic)` (or regular `tick`).
+- [x] T012 [US2] Update `InteractionManager` logic: `tick(dt, uic)` calls `initiator:processUserInput(uic)` then `initiator:tick_interaction(dt)` (or regular `tick`).
 - [x] T013 [P] [US2] Update test system to draw indicator.
 - [x] T014 [US2] Implement Visual Overlay: Draw full-screen rect in `InteractionManager:draw`.
 - [x] T015 [US2] Verify `InteractionManager` remains interactive while physics is paused.

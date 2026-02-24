@@ -118,10 +118,18 @@ function InteractionManager:tick(dt, userInteractController)
     
     -- 2.1 Initiator System (The specific skill logic)
     if self._initiatorSystem then
-        if type(self._initiatorSystem.tick_interaction) == 'function' then
-            self._initiatorSystem:tick_interaction(dt, userInteractController)
-        elseif type(self._initiatorSystem.tick) == 'function' then
-            self._initiatorSystem:tick(dt)
+        -- Explicitly inject input controller if supported
+        if userInteractController and type(self._initiatorSystem.processUserInput) == 'function' then
+            self._initiatorSystem:processUserInput(userInteractController)
+        end
+
+        -- Check again if initiatorSystem exists (it might have ended interaction during input processing)
+        if self._initiatorSystem then
+            if type(self._initiatorSystem.tick_interaction) == 'function' then
+                self._initiatorSystem:tick_interaction(dt)
+            elseif type(self._initiatorSystem.tick) == 'function' then
+                self._initiatorSystem:tick(dt)
+            end
         end
     end
 

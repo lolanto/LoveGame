@@ -96,7 +96,7 @@ As a player, I want my aiming process to be ignored by the time rewind mechanic,
   - **Effects**: `World:clean()` is called to ensure entities marked for removal are processed.
   - **Render**: Continue to render the last frame of the game world (background).
   - **Allowlist**: The `InteractionManager` manually ticks specific compatible systems:
-      - The **Initiator System** (via `tick_interaction` or `tick`).
+      - The **Initiator System** (via `processUserInput` for input injection, then `tick_interaction` or `tick`).
       - `TransformUpdateSys` (for camera hierarchy updates).
       - `CameraSetupSys` (to maintain camera fix).
       - `DisplaySys` (to render the drawing queue). **Note**: `DisplaySys` must conditionally pause sub-component updates (like Animations) based on user interaction state to prevent "ghost" state progression.

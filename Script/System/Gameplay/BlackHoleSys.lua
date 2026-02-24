@@ -80,7 +80,13 @@ function BlackHoleSys:setPhysicSys(physicSys)
 end
 
 function BlackHoleSys:processUserInput(userInteractController)
-    self._userInteractController = userInteractController
+    local im = require('InteractionManager').InteractionManager.static.getInstance()
+    
+    -- If already in interaction mode initiated by us, handle interaction inputs
+    if im:isActive() and im._initiatorSystem == self then
+        self:processInteractionInput(userInteractController)
+        return
+    end
     
     local _keyPressedCheckFunc = function(keyObj)
         if keyObj == nil then return false end
@@ -111,17 +117,20 @@ function BlackHoleSys:processUserInput(userInteractController)
     end
 end
 
----------------------------------------------------------------------------------
--- Interaction Mode Delegates
----------------------------------------------------------------------------------
-
-function BlackHoleSys:tick_interaction(dt)
+function BlackHoleSys:processInteractionInput(uic)
     if not self._indicatorEntity then return end
 
+    local dt = love.timer.getDelta() -- Input processing usually happens frame-by-frame
+    -- Note: Since processUserInput doesn't receive dt, we use love.timer.getDelta() 
+    -- or assume movement happens in tick based on flags. 
+    -- However, standard practice here is to apply changes directly or set flags.
+    -- Given the previous code applied movement directly in tick_interaction using dt,
+    -- we can do it here but we need to be careful about which dt to use (real time vs game time).
+    -- InteractionMode usually uses Real Time (unscaled).
+    
     -- 1. Handle Movement (WASD)
     local moveSpeed = 10.0 -- Configurable?
     local moveDir = {x = 0, y = 0}
-    local uic = self._userInteractController
     
     -- Helper for movement input
     local function isKeyDown(key)
@@ -147,23 +156,13 @@ function BlackHoleSys:tick_interaction(dt)
     end
     
     -- Update Indicator Position
-    local transCmp = self._indicatorEntity:getComponent(TransformCMP.ComponentTypeName)
-    local curX, curY = transCmp:getTranslate_const()
-    local nextX = curX + moveDir.x * moveSpeed * dt
-    local nextY = curY + moveDir.y * moveSpeed * dt
-    
-    -- Clamp to Viewport
-    local renderEnv = require('RenderEnv').RenderEnv.getGlobalInstance_const()
-    -- Simplification: Assume camera center is player or current view. 
-    -- If RenderEnv has camera info, use it. 
-    -- For now, just let it move. If text says "Clamp to Viewport", we need camera bounds.
-    -- Assuming RenderEnv has ViewWidth/Height or we can get it from CameraCMP.
-    -- Skipping strict clamping for now to focus on logic, or implement basic clamp if Camera available.
-    
-    transCmp:setPosition(nextX, nextY)
-    
-    -- 2. Validation (Check Overlap)
-    self:updateValidationState()
+    if len > 0 then
+        local transCmp = self._indicatorEntity:getComponent(TransformCMP.ComponentTypeName)
+        local curX, curY = transCmp:getTranslate_const()
+        local nextX = curX + moveDir.x * moveSpeed * dt
+        local nextY = curY + moveDir.y * moveSpeed * dt
+        transCmp:setPosition(nextX, nextY)
+    end
     
     -- 3. Handle Cancel (ESC)
     local cancelKey = Config.Client.Input.Interact.BlackHole.Cancel or 'escape'
@@ -183,6 +182,19 @@ function BlackHoleSys:tick_interaction(dt)
     if uic:tryToConsumeInteractInfo({ ['key_' .. activationKey] = require('UserInteractDesc').InteractConsumeInfo:new(_keyReleasedCheckFunc) }) then
         self:trySpawnBlackHole()
     end
+end
+
+---------------------------------------------------------------------------------
+-- Interaction Mode Delegates
+---------------------------------------------------------------------------------
+
+function BlackHoleSys:tick_interaction(dt)
+    if not self._indicatorEntity then return end
+    
+    -- Movement and Input now handled in processInteractionInput (called via processUserInput)
+    
+    -- 2. Validation Checks (Continuous)
+    self:updateValidationState()
 end
 
 function BlackHoleSys:createIndicator()

@@ -33,7 +33,7 @@ function TestInteractionSys:tick(deltaTime)
     end
 end
 
-function TestInteractionSys:tick_interaction(deltaTime, userInteractController)
+function TestInteractionSys:tick_interaction(deltaTime)
     -- Interaction Tick (IM driven) - Check for END
     local im = require('InteractionManager').InteractionManager.static.getInstance()
     

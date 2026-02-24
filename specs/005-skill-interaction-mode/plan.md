@@ -87,7 +87,7 @@ Script/
             *   It performs `world:clean()` to handle entity removals.
             *   It manually calls `system:tick(dt)` for essential systems: `TransformUpdateSys`, `CameraSetupSys`, and `DisplaySys`.
             *   **Crucial Update**: `DisplaySys` must be modified to check `InteractionManager:isActive()` before calling `AnimationCMP:update()`. This ensures animations freeze while rendering continues.
-            *   It manually calls `system:tick_interaction(dt)` (or standard `tick`) for the *Initiator*.
+            *   It manually calls `system:processUserInput(userInteractController)` then `system:tick_interaction(dt)` (or standard `tick`) for the *Initiator*.
             *   **New Requirement**: Systems intended to run during interaction (like the Initiator) should implement a specific `tick_interaction(dt)` (or be designed to handle their standard `tick` correctly in isolation).
     *   **System Design**:
         *   Standard Systems (`PhysicSys`, etc.) do **NOT** need `isActive()` checks because `World:update` is skipped entirely.
