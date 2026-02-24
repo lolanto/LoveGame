@@ -44,7 +44,7 @@ function KeyInteractDesc:getIsPressed()
     return self._isPressed, self._pressingDuration
 end
 
-function KeyInteractDesc:getIsRelease()
+function KeyInteractDesc:getIsReleased()
     return self._isReleased
 end
 

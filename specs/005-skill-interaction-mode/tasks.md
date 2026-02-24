@@ -21,7 +21,8 @@
 
 - [x] T007 [US1] Implement `requestStart` in `InteractionManager`: Set active state.
 - [x] T008 [US1] Implement `requestEnd` in `InteractionManager`: Clear active state.
-- [x] T009 [US1] Implement `tick` in `InteractionManager`: If active, manually tick Initiator/Camera/Display with `userInteractController`.
+- [x] T009 [US1] Implement `tick` in `InteractionManager`: If active, manually tick Initiator and allow-listed systems (`TransformUpdateSys`, `CameraSetupSys`, `DisplaySys`) with `userInteractController`.
+- [x] T009.5 [US1] Modify `DisplaySys` to pause Animation updates when `InteractionManager` is active, ensuring proper time rewind state continuity.
 - [x] T010 [P] [US1] Create test system `Script/System/Tests/TestInteractionSys.lua` to trigger interaction on key press. Implement `tick_interaction` if needed.
 - [x] T011 [US1] Verify physics pausing: Run `TestInteractionSys`, trigger mode, ensure entities stop (due to World loop skip).
 

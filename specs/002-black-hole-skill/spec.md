@@ -14,21 +14,33 @@
 -   Q: How should the 'Ignore List' (e.g. for the caster) identify entities? → A: Filtering MUST be performed by comparing unique Entity IDs.
 -   Q: How should the gravitational force be calculated relative to object mass? → A: **Mass-Independent**; the applied force must scale with the object's mass (`F = Mass * Strength / Distance^2`) so that all objects accelerate at the same rate regardless of weight.
 
+### Session 2026-02-22 (Interaction Mode)
+-   **Updates**: Added "Interaction Mode" logic where 'O' key hold/release controls an Indicator Entity, with time-out and valid placement checks.
+
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1 - Activate Black Hole (Priority: P1)
+### User Story 1 - Interaction & Placement (Priority: P1)
 
-As a player, I want to be able to cast a "Black Hole" ability so that I can control the battlefield by gathering enemies or objects.
+As a player, I want to see a visual indicator of where the Black Hole will appear so that I can place it precisely before committing to the cooldown.
 
-**Why this priority**: Correct triggering and spawning is the core mechanic.
+**Why this priority**: Defines the core input flow and targeting mechanism.
 
-**Independent Test**: Can be tested by triggering the skill and verifying the Black Hole entity appears at the correct location and persists.
+**Independent Test**:
+1.  Hold 'O' -> Indicator appears at player position.
+2.  Press Movement Keys (default WASD) -> Indicator moves within screen bounds.
+3.  Release 'O' -> Black Hole spawns at Indicator position.
+4.  Hold 'O' > 10s (Real Time) -> Indicator disappears, no spawn.
+5.  Press Cancel Key (default ESC) during hold -> Indicator disappears, no spawn.
 
 **Acceptance Scenarios**:
 
-1. **Given** the player is in a level, **When** the player activates the Black Hole skill, **Then** a Black Hole entity spawns at the configured offset (default: 3m) directly above the player's current position.
-2. **Given** a Black Hole has spawned, **When** the configured duration (default: 10s) has elapsed, **Then** the Black Hole entity disappears/is destroyed.
-3. **Given** the player moves, **When** the skill is activated, **Then** the Black Hole spawns relative to the player's position *at the moment of activation* (it does not follow the player unless specified).
+1.  **Given** the skill is ready, **When** the player presses and holds **'O'** (Configurable), **Then** the game enters "Interaction Mode" and an **Indicator Entity** spawns at the player's current position.
+2.  **Given** within Interaction Mode, **When** the player presses **Movement keys** (Configurable, default WASD) (processed via `UserInteractController`), **Then** the Indicator Entity moves relative to the screen, clamped within the screen boundaries.
+3.  **Given** within Interaction Mode, **When** the player **releases 'O'** while the Indicator is in a **Valid** position, **Then** the Interaction Mode ends, the Indicator is removed, and a **Black Hole Entity** spawns at the Indicator's final position.
+4.  **Given** within Interaction Mode, **When** the user holds 'O' for more than **10 seconds** (Real Time), **Then** the Interaction Mode automatically ends, the Indicator is removed, and **NO** Black Hole is spawned.
+5.  **Given** within Interaction Mode, **When** the player presses **Cancel Key** (Configurable, default ESC), **Then** the Interaction Mode immediately ends (Cancelled), the Indicator is removed, and **NO** Black Hole is spawned.
+6.  **Given** within Interaction Mode, **When** the Indicator is in an **Invalid** position (trigger logic), **Then** its visual appearance changes (e.g., color) to indicate "Cannot Place".
+7.  **Given** the Indicator is in an **Invalid** position, **When** 'O' is released, **Then** the Interaction Mode ends and **NO** Black Hole is spawned (or placement is blocked).
 
 ---
 
@@ -42,53 +54,57 @@ As a player, I want the Black Hole to attract nearby objects so that they are pu
 
 **Acceptance Scenarios**:
 
-1. **Given** a Black Hole exists and a movable object is within the configured radius (default: 5m), **When** the game updates, **Then** the object receives a physics force directed towards the center of the Black Hole.
-2. **Given** a movable object is outside the configured radius, **When** the game updates, **Then** the object is unaffected by the Black Hole's gravity.
-3. **Given** a static object (e.g., wall, ground) within 5 meters, **When** the Black Hole is active, **Then** the static object remains in place.
+1.  **Given** a Black Hole exists and a movable object is within the configured radius (default: 5m), **When** the game updates, **Then** the object receives a physics force directed towards the center of the Black Hole.
+2.  **Given** a movable object is outside the configured radius, **When** the game updates, **Then** the object is unaffected by the Black Hole's gravity.
+3.  **Given** a static object (e.g., wall, ground) within 5 meters, **When** the Black Hole is active, **Then** the static object remains in place.
 
----
-Mechanism**: Input binding MUST be handled via the `processUserInput` interface on `BlackHoleSys`, using `UserInteractController` to consume the input state (e.g. `tryToConsumeInteractInfo`). Direct usage of `love.keyboard` is prohibited.
-    -   **
 ## Functional Requirements *(mandatory)*
 
-1.  **Skill Activation**:
-    -   **Input**: The skill is triggered by the **'T' key** (default).
-    -   **Configurability**: The input binding must be implemented to support future re-mapping (soft-coded/configurable), not hardcoded deeply in logic.
-    -   Upon activation, the system must instantiate a new Black Hole entity.
+1.  **Interaction Mode Logic**:
+    -   **Activation**: Triggered by pressing **Activation Key** (Configurable, default 'O', processed via `UserInteractController`). Enters "Interaction Mode".
+    -   **Duration**: Lasts until key release, **10s Real Time Timeout**, or **Cancel Key** (default 'ESC') cancellation.
+    -   **State Tracking**: Must track "Is Placing" state and "Duration" timer.
+    -   **Exit Conditions**:
+        -   **Release Activation Key**: Trigger spawn attempt.
+        -   **Timeout (>10s Real Time)**: Cancel interaction (cleanup Indicator, no spawn).
+        -   **Press Cancel Key**: Immediate Cancel (cleanup Indicator, no spawn).
 
-2.  **Spawning Logic**:
-    -   **Configuration**: The spawning offset must be a configurable parameter (Default: 3m).
-    -   **Position**: The spawn position must be calculated as `PlayerPosition + (0, -SpawnOffset)` (assuming Y-up is negative for "above", or consistent with game's "up" vector).
-    -   **Parenting**: The Black Hole should exist in the world space, independent of the player's subsequent movements (detached).
+2.  **Input Handling**:
+    -   All inputs (Activation 'O', Movement 'WASD', Cancel 'ESC') **MUST** be configurable via `Config.lua` and processed via `UserInteractController`.
+    -   Direct `love.keyboard` polling is prohibited.
 
-3.  **Black Hole Properties**:
-    -   **Parameters**: The following properties must be configurable data (not hardcoded), allowing for future upgrades:
-        -   **Effect Radius** (Default: 5m)
-        -   **Duration** (Default: 10s)
-        -   **Force Strength** (Default: 400)
-        -   **Trap Radius** (Default: 0.5m)
-    -   **Duration Logic**: The entity must self-destruct or deactivate after the configured duration elapses.
-    -   **Visuals**: The entity must include a **Debug Visualization Component** (e.g., drawing a debug color circle) to clearly indicate its position and radius during development.
+3.  **Indicator Entity**:
+    -   **Spawning**: Created at Player's position on Interaction start.
+    -   **Movement**: Controlled by **Movement Keys** (Configurable, default WASD) via Controller. Movement is confined to the **Current Player Camera Viewport** (World Space bounds visible on screen). If the user attempts to move the indicator outside, its position must be clamped to the camera's current visible rectangle.
+    -   **Visuals**: Uses `DebugColorCircleCMP` to visualize the area.
+    -   **Collision/Validation**:
+        -   Must be a **Trigger** (Sensor) type `PhysicalCMP` + `TriggerCMP`.
+        -   Must detect overlap with other objects to determine "Valid Placement" (currently defaults to "Always Valid" but interface must exist).
+        -   **Visual Feedback**: Changes color/state based on validity (e.g., Green=Valid, Red=Invalid).
 
-4.  **Physics Interaction**:
-    -   The Black Hole must apply a force to all eligible entities within the radius each frame (or physics step).
-    -   **Eligible Entities**: Entities with a dynamic physics component (movable).
-    -   **Force Calculation**: A directional force vector from the object center to the Black Hole center.
-    -   **Force Model**: The force must be **Mass-Independent** (simulate uniform acceleration). `AppliedForce = (ForceStrength * ObjectMass) / (DistanceSquared)`.
-    -   **Force Falloff**: The force magnitude follows an Inverse Square law. It is very weak at the 5m edge and extremely strong near the center.
-    -   **Capture Mechanism**: Objects within a very small radius (e.g., < 0.5m) of the center should be "trapped" to prevent orbiting or flying out due to inertia. To avoid state persistence issues (e.g. during time rewind), this must be implemented as a **Simulated Drag Force** (applying force opposite to velocity) rather than modifying the body's `LinearDamping` property.
-    -   **Filtering**: The Black Hole must support an "Ignore List" containing **Entity IDs**. Specific entities (e.g., the caster/player) can be added to this list (by ID) to prevent them from being sucked in.
+4.  **Black Hole Execution**:
+    -   **Spawn Logic**: Only spawns if Interaction Mode ends via "Release" AND placement is "Valid".
+    -   **Location**: Spawns at the **Entity Indicator's** final `Transform` position (World Space).
+    -   **Parameters** (Configurable):
+        -   **Radius**: 5m
+        -   **Duration**: 10s (Game Time - affected by Time Dilation)
+        -   **Force**: ~400 (Mass-Independent)
+        -   **Trap Radius**: 0.5m
+
+5.  **Physics Interaction (Black Hole)**:
+    -   **Force Application**: Applied every physics step to dynamic objects within radius.
+    -   **Formula**: `F = (ForceStrength * Mass) / Distance^2` (Inverse Square Law).
+    -   **Filtering**: Support "Ignore List" via Entity ID (e.g., ignore Caster).
+    -   **Trapping**: Apply simulated drag/damping when objects are very close (< 0.5m) to the center to prevent orbiting instability.
 
 ## Success Criteria *(mandatory)*
 
--   **Accuracy**: Black Hole spawns exactly at the configured offset (default 3m) from player center in the "up" direction.
--   **Range**: Objects just inside the configured radius are pulled; objects just outside are not.
--   **Timing**: Black Hole lasts exactly for the configured duration.
--   **Selectivity**: Only "movable" objects are moved; static geometry is ignored.
--   **Stability**: Captured objects settle near the center rather than slingshotting out.
--   **Safety**: The caster (Player) is not affected by their own Black Hole (verified by Entity ID).
-    
-    
+-   **Precision**: Player can successfully navigate the Indicator to a specific target on screen.
+-   **Feedback**: Visuals clearly distinguish between "Aiming" (Indicator) and "Active" (Black Hole) states.
+-   **Cancel**: User can cancel the skill by waiting for the timeout or pressing **Cancel Key** (default ESC).
+-   **Physics**: Gravity effect works identically to previous spec.
+-   **Architecture**: All inputs are decoupled from hardware via `UserInteractController`.
+
 ## Non-Functional Requirements *(Time & Physics)*
 
 1.  **Time Rewind Interoperability**:
@@ -96,24 +112,29 @@ Mechanism**: Input binding MUST be handled via the `processUserInput` interface 
     -   **Resurrection**: If the Black Hole expires (disappears), and time is rewound to a point when it was active, it must reappear with the correct remaining duration.
     -   **State Restoration**: Its position and parameters should be consistent with the historical frame.
 
-2.  **Time Dilation (Bullet Time) Interoperability**:
-    -   The Black Hole's logic (lifetime countdown, force application) must respect the Global Time Scale.
-    -   When time slows down (e.g. 0.1x), the Black Hole's duration must decay 10x slower.
-    -   Physics usage of DeltaTime must be scaled.
+2.  **Time System**:
+    -   **Interaction Mode**: The 10s timeout MUST be based on **Real Time** to prevent it from stalling during time stops/slows.
+    -   **Black Hole Logic**: The Black Hole's duration (10s) and physics MUST be based on **Game Time** (respecting scale/dilation).
 
 ## Key Entities & Data Models *(optional)*
 
-## Key Entities & Data Models *(optional)*
+-   **Indicator Entity**:
+    -   `TransformCMP` (Position)
+    -   `PhysicalCMP` (Sensor/Trigger Body)
+    -   `TriggerCMP` (Collision Logic)
+    -   `DebugColorCircleCMP` (Visual Representation)
+    -   *(New)*: Logic to accept `UserInteractController` input.
 
 -   **BlackHole Entity**:
     -   Components:
         -   `Transform` (Position)
-        -   `LifeTime` (for duration tracking)
-        -   `GravitationalField` (concept/component defining radius and force strength)
-        -   `DebugDraw` (or similar) to visualize position/radius
+        -   `LifeTime` (10s)
+        -   `GravitationalField` (Logic/Data)
+        -   `DebugColorCircle` (Visuals)
 
 ## Assumptions & Dependencies *(optional)*
 
--   **Measurement Unit**: The Game Engine uses Meters or a known conversion (e.g., pixel-to-meter ratio). We assume standard physics units.
--   **"Above"**: Defined as the negative Y axis (standard 2D) or opposite to gravity vector.
+-   **Input System**: `UserInteractController` supports distinguishing `KeyHeld` (for O), `AdjustedMovement` (WASD), and `KeyDown` (ESC) events.
+-   **Visual Assets**: Temporary use of Debug shapes is acceptable for this phase.
+-   **Coordinate System**: Screen bounds are accessible for clamping logic.
 -   **Movable Objects**: Defined as entities possessing a Physics/Rigidbody component that is not Static.

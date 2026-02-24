@@ -27,8 +27,8 @@ function TriggerSys:tick(deltaTime)
     for _, event in ipairs(events) do
         -- 这里我们只处理 'begin' 事件作为触发时刻
         -- 如果需要在这里处理持续重叠或者结束重叠，可以根据 event.type 判断
-        if event.type == 'begin' then
-            self:handleCollision(event.a, event.b)
+        if event.type == 'begin' or event.type == 'end' then
+            self:handleCollision(event.a, event.b, event.type)
         end
     end
 end
@@ -36,7 +36,8 @@ end
 --- 处理单次碰撞事件
 --- @param entityA Entity
 --- @param entityB Entity
-function TriggerSys:handleCollision(entityA, entityB)
+--- @param eventType string 'begin' | 'end'
+function TriggerSys:handleCollision(entityA, entityB, eventType)
     -- 必须确保这两个对象都是 Entity 类型 (PhysicSystem 中传入的 UserData)
     -- 安全起见，检查是否有 getComponent 方法
     if not entityA.getComponent or not entityB.getComponent then
@@ -49,12 +50,12 @@ function TriggerSys:handleCollision(entityA, entityB)
 
     -- 如果 entityA 有触发器，触发它的回调，传入 entityB 作为交互对象
     if triggerA then
-        triggerA:executeCallback(entityB)
+        triggerA:executeCallback(entityB, eventType)
     end
 
     -- 如果 entityB 有触发器，触发它的回调，传入 entityA 作为交互对象
     if triggerB then
-        triggerB:executeCallback(entityA)
+        triggerB:executeCallback(entityA, eventType)
     end
 end
 

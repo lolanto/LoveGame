@@ -31,7 +31,12 @@ function DisplaySys:tick(deltaTime)
         ---@type AnimationCMP|nil
         local aniCmp = drawables[i]
         if aniCmp ~= nil then
-            aniCmp:update(deltaTime)
+            -- Interaction Mode Check: If interaction is active, do NOT update animations
+            -- because the game world is supposed to be paused.
+            local im = require('InteractionManager').InteractionManager.static.getInstance()
+            if not im:isActive() then
+                aniCmp:update(deltaTime)
+            end
         end
     end
 end

@@ -13,55 +13,48 @@
 
 - [x] T003 Create `BlackHoleSys` skeleton in `Script/System/Gameplay/BlackHoleSys.lua`
 - [x] T004 Register new components and system in `Script/Config.lua`
-- [x] T005 Update Architecture Documents:
-    - Add `GravitationalFieldCMP` and `LifeTimeCMP` to `.specify/memory/architecture-components.md`
-    - Add `BlackHoleSys` to `.specify/memory/architecture-systems.md`
-    - Create component docs in `.specify/memory/components/`
-    - Create system docs in `.specify/memory/systems/`
+- [x] T005 Update Architecture Documents (Components/Systems memory files)
 
-## Phase 3: User Story 1 - Activate Black Hole
+## Phase 3: User Story 1 - Interaction & Placement (Refactor)
 
-**Goal**: Player can press 'T' to spawn a Black Hole entity at offset position which lasts 10s.
+**Goal**: Player holds 'O' to aim with an Indicator, moves it with WASD, and releases to spawn.
 
-- [x] T006 [US1] Implement input listening for 'T' key via `processUserInput` interface in `Script/System/Gameplay/BlackHoleSys.lua` (Refactored from direct `love.keyboard`)
-- [x] T007 [US1] Implement `spawnBlackHole` function to create entity with `TransformCMP`, `GravitationalFieldCMP`, `LifeTimeCMP` in `Script/System/Gameplay/BlackHoleSys.lua`
-- [x] T008 [US1] Implement lifetime countdown logic to destroy entity after duration in `Script/System/Gameplay/BlackHoleSys.lua`
-- [x] T009 [US1] Add `DebugColorCircleCMP` to spawned entity for visualization in `Script/System/Gameplay/BlackHoleSys.lua`
+- [x] T006 [US1] Update `Script/Config.lua` to include `Client.Input.Interact.BlackHole` key binding (Activation, Movement, Cancel) and `BlackHole` parameters
+- [x] T007 [US1] Refactor `BlackHoleSys:processUserInput` to trigger `InteractionManager:requestStart` on Activation Key press. Implement `tick_interaction` for the aiming loop.
+- [x] T008 [US1] Implement `BlackHoleSys:createIndicator()` to spawn an indicator entity with `TransformCMP`, `PhysicCMP` (Sensor, Type: Static/Kinematic), `TriggerCMP`, and `DebugColorCircleCMP`
+- [x] T009 [US1] Implement `BlackHoleSys:tick_interaction(dt)` to move the indicator using Configurable Movement Keys (WASD) input from `UserInteractController`. Position MUST be clamped to the Current Camera Viewport (World Space, calculated via `RenderEnv`).
+- [x] T010 [US1] Implement `BlackHoleSys:cancelInteraction()` to handle Configurable Cancel Key (ESC) or Timeout (>10s Real Time) via `InteractionManager:requestEnd`, destroying the indicator without spawning
+- [x] T011 [US1] Implement `BlackHoleSys:trySpawnBlackHole()` on Activation Key release inside `tick_interaction` to spawn the Black Hole and call `InteractionManager:requestEnd('Spawn')`
+- [x] T012 [US1] Implement Validation Logic using `TriggerCMP` callback to detect static geometry overlap, updating Indicator visual state in `BlackHoleSys`.
 
-## Phase 4: User Story 2 - Gravitational Pull
+## Phase 4: User Story 2 - Gravitational Pull (Existing)
 
 **Goal**: Black Hole applies force to nearby physics objects.
 
-- [x] T010 [US2] Implement physics entity query logic (iterating through `PhysicCMP` collected entities) in `Script/System/Gameplay/BlackHoleSys.lua`
-- [x] T011 [US2] Implement Inverse Square law force calculation in `Script/System/Gameplay/BlackHoleSys.lua`
-- [x] T012 [US2] Apply calculated force to eligible physics bodies in `Script/System/Gameplay/BlackHoleSys.lua`
-
-## Dependencies
-
-- US1 must be completed before US2 (Spawning required before attraction).
-
-## Parallel Execution
-- T001 and T002 can be done in parallel.
-- T006 and T007 are sequential within `BlackHoleSys`.
-
-## Implementation Strategy
--   **MVP**: Spawn a static circle when pressing 'T' that disappears after 10s.
--   **Full**: Add physics forces to that circle.
+- [x] T013 [US2] Implement physics entity query logic (iterating through `PhysicCMP` collected entities) in `Script/System/Gameplay/BlackHoleSys.lua`
+- [x] T014 [US2] Implement Inverse Square law force calculation in `Script/System/Gameplay/BlackHoleSys.lua` (`F = (Strength * Mass) / Distance^2`)
+- [x] T015 [US2] Apply calculated force to eligible physics bodies in `Script/System/Gameplay/BlackHoleSys.lua`
+- [x] T016 [US2] Implement "Trapping" mechanism (drag force) for objects near center
 
 ## Phase 5: Refinement & Bug Fixes
 
-- [x] T013 Fix runtime error: `attempt to call method 'getPosition_const' (a nil value)` in `BlackHoleSys.lua` (Replace with `getTranslate_const`)
-- [x] T014 Add ignore list support to `GravitationalFieldCMP`
-- [x] T015 Update `BlackHoleSys` to ignore "Owner" (player) and other filtered entities
-- [x] T016 Implement "Trapping" mechanism in `BlackHoleSys` using stateless drag force `F = -v*k` (avoids `LinearDamping` state persistence bugs)
-- [x] T017 Tune Physics Parameters (Strength 1000 -> 400)
-- [x] T019 Implement Time Rewind Protocol in `LifeTimeCMP` (`getRewindState`/`restoreRewindState`)
-- [x] T020 Implement Time Rewind Protocol in `GravitationalFieldCMP` (optional state)
-- [x] T021 Update `BlackHoleSys` to support entity persistence (replace destroy with dormancy/resurrection logic) to allow rewinding back to life.
-- [x] T022 Verify Time Dilation scaling in `BlackHoleSys` logic.
-- [x] T023 Move Black Hole configuration (Radius: 5.0, ForceStrength: 400.0, MinRadius: 0.5, Duration: 10.0) from `BlackHoleSys.lua` to `Script/Config.lua`
-- [x] T024 Move Black Hole Input Binding (TriggerKey: 't') from `BlackHoleSys.lua` to `Script/Config.lua`
+- [x] T017 Fix runtime error: `attempt to call method 'getPosition_const' (a nil value)`
+- [x] T018 Add ignore list support to `GravitationalFieldCMP` and `BlackHoleSys`
+- [x] T019 Implement Time Rewind Protocol in `LifeTimeCMP`
+- [x] T020 Implement Time Rewind Protocol in `GravitationalFieldCMP`
+- [x] T021 Update `BlackHoleSys` to support entity persistence (dormancy/resurrection)
+- [x] T022 Verify Time Dilation scaling in `BlackHoleSys` logic
+- [x] T023 Move Black Hole configuration to `Script/Config.lua`
+- [x] T024 Move Black Hole Input Binding (TriggerKey: 't') from `BlackHoleSys.lua` to `Script/Config.lua` (Need to Update per T006)
 - [x] T025 Update force calculation in `BlackHoleSys.lua` to be Mass-Independent: `F = (Strength * Mass) / Distance^2`
 - [x] T026 Verify "Ignore List" filtering uses unique Entity IDs in `BlackHoleSys.lua`
-- [x] T018 Test and Verify revisions
+
+## Dependencies
+
+- US1 Refactor needs to be completed to enable the new interaction flow.
+- US2 Physics logic remains largely valid but needs to ensure it applies to the *newly spawned* Black Hole entities.
+
+## Implementation Strategy
+-   **Refactor**: Modify existing `BlackHoleSys` to replace the "Instant Spawn on T" logic with the "Indicator State Machine" logic.
+-   **Reuse**: Keep the `Gravity` and `Time` logic as they are already implemented and valid (T13-T23).
 

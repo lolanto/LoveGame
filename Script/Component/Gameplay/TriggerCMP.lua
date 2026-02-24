@@ -32,9 +32,10 @@ end
 
 --- 手动触发回调 (由 TriggerSys 调用)
 --- @param otherEntity Entity
-function TriggerCMP:executeCallback(otherEntity)
+--- @param eventType string 'begin' | 'end'
+function TriggerCMP:executeCallback(otherEntity, eventType)
     if self._callback then
-        self._callback(self:getEntity(), otherEntity)
+        self._callback(self:getEntity(), otherEntity, eventType)
     end
 end
 

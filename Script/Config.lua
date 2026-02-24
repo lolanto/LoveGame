@@ -4,7 +4,7 @@ local Config = {
     
     -- Gameplay Configuration
     BlackHole = {
-        TriggerKey = 't',
+        -- TriggerKey = 't', -- Moved to Client.Input
         Radius = 5.0,
         ForceStrength = 400.0,
         MinRadius = 0.5,
@@ -12,6 +12,23 @@ local Config = {
         SpawnOffset = {x = 0, y = -3},
         SpawnCooldown = 1.0,
         DebugColor = {0, 0, 0, 0.8}
+    },
+    
+    Client = {
+        Input = {
+            Interact = {
+                BlackHole = {
+                    Activation = 'o',
+                    Cancel = 'escape',
+                    Movement = {
+                        Up = 'w',
+                        Down = 's',
+                        Left = 'a',
+                        Right = 'd'
+                    }
+                }
+            }
+        }
     },
 
     -- Logger Configuration
