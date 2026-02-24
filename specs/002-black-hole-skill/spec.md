@@ -62,6 +62,7 @@ As a player, I want the Black Hole to attract nearby objects so that they are pu
 
 1.  **Interaction Mode Logic**:
     -   **Activation**: Triggered by pressing **Activation Key** (Configurable, default 'O', processed via `UserInteractController`). Enters "Interaction Mode".
+    -   **Safety**: Must prevent "auto-restart" if the key is held down after a timeout or cancellation. The system must wait for the Activation Key to be released before accepting a new start request.
     -   **Duration**: Lasts until key release, **10s Real Time Timeout**, or **Cancel Key** (default 'ESC') cancellation.
     -   **State Tracking**: Must track "Is Placing" state and "Duration" timer.
     -   **Exit Conditions**:

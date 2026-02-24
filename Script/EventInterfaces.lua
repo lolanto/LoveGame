@@ -49,7 +49,10 @@ ISubscriber.static.nextID = 1
 ---@param o any
 function ISubscriber:new(name, o)
     o = o or {}
-    local instance = setmetatable(o, ISubscriber)
+    local instance = o
+    if getmetatable(o) == nil then
+        instance = setmetatable(o, ISubscriber)
+    end
     instance._subscriberName = name or "UnknownSubscriber"
     
     -- 分配唯一ID并自增

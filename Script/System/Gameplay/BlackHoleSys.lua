@@ -8,16 +8,24 @@ local LifeTimeCMP = require('Component.Gameplay.LifeTimeCMP').LifeTimeCMP
 local TransformCMP = require('Component.TransformCMP').TransformCMP
 local PhysicCMP = require('Component.PhysicCMP').PhysicCMP
 
----@class BlackHoleSys : BaseSystem
-local BlackHoleSys = setmetatable({}, MOD_BaseSystem)
-BlackHoleSys.__index = BlackHoleSys
+local InteractionManager = require('InteractionManager')
+local EventInterfaces = require('EventInterfaces')
+
+---@class BlackHoleSys : BaseSystem, ISubscriber
+local BlackHoleSys = require('utils.MultiInheritHelper').MultiInheritHelper.createClass(MOD_BaseSystem, EventInterfaces.ISubscriber)
 BlackHoleSys.SystemTypeName = "BlackHoleSys"
 
 function BlackHoleSys:new(world)
-    local instance = setmetatable(MOD_BaseSystem.new(self, BlackHoleSys.SystemTypeName, world), self)
-    local ComponentRequirementDesc = require('BaseSystem').ComponentRequirementDesc
+    -- BaseSystem constructor
+    -- Note: BaseSystem:new(name, world) uses 'self' as metatable. 
+    -- Since we call it as MOD_BaseSystem.new(self, ...), 'self' is BlackHoleSys class.
+    local instance = MOD_BaseSystem.new(self, BlackHoleSys.SystemTypeName, world)
     
-    local InteractionManager = require('InteractionManager')
+    -- ISubscriber constructor (mixin initialization)
+    -- Pass 'instance' as the object to modify. ISubscriber:new now respects existing metatables.
+    EventInterfaces.ISubscriber.new(nil, BlackHoleSys.SystemTypeName, instance)
+    
+    local ComponentRequirementDesc = require('BaseSystem').ComponentRequirementDesc
     
     instance:addComponentRequirement(GravitationalFieldCMP.ComponentTypeID, ComponentRequirementDesc:new(true, false))
     instance:addComponentRequirement(LifeTimeCMP.ComponentTypeID, ComponentRequirementDesc:new(true, false))
@@ -27,6 +35,7 @@ function BlackHoleSys:new(world)
     instance._spawnRequested = false
     instance._inputCooldown = 0
     instance._indicatorEntity = nil
+    instance._waitForKeyRelease = false
     
     instance:initView()
     -- Create a separate view for PhysicCMP since we need to iterate ALL physics objects against each black hole
@@ -34,6 +43,11 @@ function BlackHoleSys:new(world)
         [PhysicCMP.ComponentTypeName] = ComponentRequirementDesc:new(true, false),
         [TransformCMP.ComponentTypeName] = ComponentRequirementDesc:new(true, true) -- Need position? Or use Body position
     })
+    
+    -- Subscribe to InteractionEnded Event
+    local mc = require('MessageCenter').MessageCenter.static.getInstance()
+    local eventObj = mc:registerEvent(InteractionManager.InteractionManager.Event_InteractionEnded)
+    mc:subscribe(eventObj, instance, instance.onInteractionEnded, instance, "BlackHoleSys_IntegrationListener")
     
     return instance
 end
@@ -87,16 +101,37 @@ function BlackHoleSys:processUserInput(userInteractController)
         self:processInteractionInput(userInteractController)
         return
     end
+
+    local activationKey = Config.Client.Input.Interact.BlackHole.Activation or 'o'
+    local inputKeyName = 'key_' .. activationKey
+
+    -- State Check: Wait for key release preventing auto-restart
+    if self._waitForKeyRelease then
+        -- Check if the key is NOT pressed (i.e., released or up)
+        local _keyReleasedCheckFunc = function(keyObj)
+            if keyObj == nil then return true end -- If keyObj is nil, it's definitely not pressed
+            local isPressed, _ = keyObj:getIsPressed()
+            return not isPressed
+        end
+        
+        -- We try to consume the "released" state. If successful, it means the key is up.
+        local releaseCheckList = {
+            [inputKeyName] = require('UserInteractDesc').InteractConsumeInfo:new(_keyReleasedCheckFunc)
+        }
+        
+        if userInteractController:tryToConsumeInteractInfo(releaseCheckList) then
+            self._waitForKeyRelease = false
+        else
+            -- Key is still pressed, wait.
+            return 
+        end
+    end
     
     local _keyPressedCheckFunc = function(keyObj)
         if keyObj == nil then return false end
         local isPressed, _ = keyObj:getIsPressed()
         return isPressed
     end
-
-    -- Check for Activation key (default 'o')
-    local activationKey = Config.Client.Input.Interact.BlackHole.Activation or 'o'
-    local inputKeyName = 'key_' .. activationKey
     
     local consumeList = {
         [inputKeyName] = require('UserInteractDesc').InteractConsumeInfo:new(_keyPressedCheckFunc)
@@ -291,11 +326,23 @@ function BlackHoleSys:updateValidationState()
     self._isValidPlacement = isValid
 end
 
-function BlackHoleSys:cancelInteraction(reason)
-    if self._indicatorEntity then
-        self._world:removeEntity(self._indicatorEntity)
-        self._indicatorEntity = nil
+---@param context table The listener context (self)
+---@param args table Event arguments { initiator = system, reason = reason }
+function BlackHoleSys.onInteractionEnded(context, args)
+    local self = context
+    -- Check if this interaction was initiated by us
+    if args and args.initiator == self then
+        if self._indicatorEntity then
+            self._world:removeEntity(self._indicatorEntity)
+            self._indicatorEntity = nil
+        end
+        -- Interaction ended, forbid immediate restart until key release
+        self._waitForKeyRelease = true
     end
+end
+
+function BlackHoleSys:cancelInteraction(reason)
+    -- Just enable the end request, cleanup happens in onInteractionEnded
     require('InteractionManager').InteractionManager.static.getInstance():requestEnd(reason)
 end
 

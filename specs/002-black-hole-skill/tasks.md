@@ -48,6 +48,7 @@
 - [x] T024 Move Black Hole Input Binding (TriggerKey: 't') from `BlackHoleSys.lua` to `Script/Config.lua` (Need to Update per T006)
 - [x] T025 Update force calculation in `BlackHoleSys.lua` to be Mass-Independent: `F = (Strength * Mass) / Distance^2`
 - [x] T026 Verify "Ignore List" filtering uses unique Entity IDs in `BlackHoleSys.lua`
+- [x] T027 Implement input safety check in `BlackHoleSys` to wait for activation key release after timeout/cancel preventing accidental restart
 
 ## Dependencies
 

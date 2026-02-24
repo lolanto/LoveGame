@@ -68,7 +68,7 @@
 1.  **Create Components**: `GravitationalFieldCMP`, `LifeTimeCMP` (if not exists).
 2.  **Create System**: `BlackHoleSys`.
     -   **State Management (via InteractionManager)**:
-        -   Start: In `processUserInput`, if 'O' pressed -> `InteractionManager:requestStart(self, timeout)`.
+        -   Start: In `processUserInput`, Ensure key state is valid (wait for release if previously held) -> `InteractionManager:requestStart(self, timeout)`.
         -   Loop: Implement `BlackHoleSys:tick_interaction(dt, inputController)`.
         -   End: Call `InteractionManager:requestEnd('Spawn'|'Cancel'|'Timeout')`.
     -   **Interaction Logic (inside `tick_interaction`)**:

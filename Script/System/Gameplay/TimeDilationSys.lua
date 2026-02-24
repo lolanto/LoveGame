@@ -11,13 +11,12 @@ TimeDilationSys.SystemTypeName = "TimeDilationSys"
 
 function TimeDilationSys:new(world)
     local o = MOD_BaseSystem.new(self, TimeDilationSys.SystemTypeName, world)
+    -- local instance = setmetatable(o, TimeDilationSys) -- MultiInheritHelper.createClass already sets the metatable if we use new correctly, but here we are using MOD_BaseSystem.new which returns a table with BaseSystem metatable.
+    -- Actually, TimeDilationSys IS the metatable we want.
     local instance = setmetatable(o, TimeDilationSys)
     
-    -- Initialize ISubscriber
-    -- Manually initialize because ISubscriber:new sets metatable which we don't want (we want to keep TimeDilationSys metatable)
-    instance._subscriberName = "TimeDilationSys"
-    instance._subscriberID = ISubscriber.static.nextID
-    ISubscriber.static.nextID = ISubscriber.static.nextID + 1
+    -- Initialize ISubscriber (Mixin style)
+    ISubscriber.new(nil, "TimeDilationSys", instance)
 
     instance._isDilationActive = false
     instance._isRewindActive = false
