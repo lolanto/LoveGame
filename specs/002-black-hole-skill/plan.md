@@ -20,6 +20,7 @@
         -   Start: 'O' key triggers `InteractionManager:requestStart`.
         -   Loop: `BlackHoleSys:tick_interaction` handles the aiming logic.
         -   End: `InteractionManager:requestEnd` handles cleanup.
+        -   Note: Interaction Mode MUST NOT run a full physics step that mutates non-indicator entities. Placement validation will use Box2D/love.physics read-only queries (AABB queries / fixture inspection) plus precise geometric tests implemented in Lua (utils) where necessary.
     -   **Physics**: We will use `love.physics.Body:applyForce` with **Mass-Independent** calculation (`F = m*a`).
     -   **Input**: `BlackHoleSys` detects 'O' release inside `tick_interaction` to spawn.
 
@@ -76,7 +77,7 @@
         -   **Aiming**: 
             -   Read Movement Inputs (Configurable, e.g. WASD) via `inputController` -> Move Indicator.
             -   **Clamping**: Keep Indicator within Camera Viewport (using `RenderEnv`).
-            -   **Validation**: Register a callback in `TriggerCMP` to handle intersection tests (detecting 'Static' geometry). The `BlackHoleSys` will check the state updated by this callback to toggle visual state (Green/Red), instead of manually iterating contacts in the System.
+            -   **Validation**: Use Box2D/love.physics read-only query APIs (for example `World:queryBoundingBox`) to collect candidate fixtures, then run precise intersection checks (circle-vs-circle, circle-vs-polygon/rect) in Lua to determine validity. Do NOT call `World:update` or otherwise mutate bodies/fixtures. If geometric helpers are needed, implement them under `Script/utils/` for reuse.
         -   **Completion**:
             -   If Trigger Key ('O') Released -> Spawn Black Hole at Indicator -> Request End ('Spawn').
             -   If Cancel Key (Configurable, e.g. 'ESC') Pressed -> Destroy Indicator -> Request End ('Cancel').
@@ -87,8 +88,9 @@
         -   **Force**: Apply `(Strength * Mass) / Distance^2`.
 3.  **Integration**:
     -   Add `BlackHoleSys` to `main.lua`.
-    -   Inject `PhysicSys` into `BlackHoleSys`.
+    -   Inject `PhysicSys` into `BlackHoleSys` (for access to `getPhysicsWorld()` to run read-only queries).
     -   Add `Config` entries for Keys ('O') and Params.
+    -   Add `Script/utils/geom.lua` (or similar) containing reusable Rect/Circle intersection helpers and unit tests.
 
 
 ## Needs Clarification

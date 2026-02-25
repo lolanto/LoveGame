@@ -25,7 +25,8 @@
 - [x] T009 [US1] Implement `BlackHoleSys:tick_interaction(dt)` to move the indicator using Configurable Movement Keys (WASD) input from `UserInteractController`. Position MUST be clamped to the Current Camera Viewport (World Space, calculated via `RenderEnv`).
 - [x] T010 [US1] Implement `BlackHoleSys:cancelInteraction()` to handle Configurable Cancel Key (ESC) or Timeout (>10s Real Time) via `InteractionManager:requestEnd`, destroying the indicator without spawning
 - [x] T011 [US1] Implement `BlackHoleSys:trySpawnBlackHole()` on Activation Key release inside `tick_interaction` to spawn the Black Hole and call `InteractionManager:requestEnd('Spawn')`
-- [x] T012 [US1] Implement Validation Logic using `TriggerCMP` callback to detect static geometry overlap, updating Indicator visual state in `BlackHoleSys`.
+- [x] T012 [US1] Implement Validation Logic using Box2D/love.physics read-only query APIs (e.g. `World:queryBoundingBox`) to detect static geometry overlap, updating Indicator visual state in `BlackHoleSys` without stepping physics.
+- [x] T028 [US1] Add reusable Rect/Circle intersection helpers in `Script/utils/geom.lua` and wire `BlackHoleSys` placement validation to use them only as a precise post-filter after Box2D candidate queries.
 
 ## Phase 4: User Story 2 - Gravitational Pull (Existing)
 
@@ -58,4 +59,5 @@
 ## Implementation Strategy
 -   **Refactor**: Modify existing `BlackHoleSys` to replace the "Instant Spawn on T" logic with the "Indicator State Machine" logic.
 -   **Reuse**: Keep the `Gravity` and `Time` logic as they are already implemented and valid (T13-T23).
+-   **Validation Update**: Placement validity in Interaction Mode uses read-only Box2D queries + optional `Script/utils/geom.lua` precise checks; do not run physics simulation for validation.
 

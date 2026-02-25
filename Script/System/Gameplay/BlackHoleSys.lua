@@ -7,6 +7,7 @@ local GravitationalFieldCMP = require('Component.Gameplay.GravitationalFieldCMP'
 local LifeTimeCMP = require('Component.Gameplay.LifeTimeCMP').LifeTimeCMP
 local TransformCMP = require('Component.TransformCMP').TransformCMP
 local PhysicCMP = require('Component.PhysicCMP').PhysicCMP
+local Geom = require('utils.geom').Geom
 
 local InteractionManager = require('InteractionManager')
 local EventInterfaces = require('EventInterfaces')
@@ -313,9 +314,72 @@ end
 
 function BlackHoleSys:updateValidationState()
     if not self._indicatorEntity then return end
-    
-    -- Validation logic handled by TriggerCMP callback counting overlaps with static bodies
-    local isValid = (self._validationOverlapCount == 0)
+
+    local unpackValues = table.unpack or unpack
+
+    local indicatorTransform = self._indicatorEntity:getComponent(TransformCMP.ComponentTypeName)
+    if not indicatorTransform then return end
+
+    local indicatorX, indicatorY = indicatorTransform:getTranslate_const()
+    local indicatorRadius = Config.BlackHole.Radius or 0.5
+    local minX = indicatorX - indicatorRadius
+    local minY = indicatorY - indicatorRadius
+    local maxX = indicatorX + indicatorRadius
+    local maxY = indicatorY + indicatorRadius
+
+    local isValid = true
+    local physicSys = self._physicSys or self._world:getSystem('PhysicSys')
+
+    if physicSys and physicSys.getPhysicsWorld then
+        local physicsWorld = physicSys:getPhysicsWorld()
+        if physicsWorld and physicsWorld.queryBoundingBox then
+            physicsWorld:queryBoundingBox(minX, minY, maxX, maxY, function(fixture)
+                if not fixture then return true end
+
+                local body = fixture:getBody()
+                if not body then return true end
+
+                local ownerEntity = fixture:getUserData() or body:getUserData()
+                if not ownerEntity or ownerEntity == self._indicatorEntity then return true end
+                if not ownerEntity.getComponent then return true end
+
+                local ownerPhysicCmp = ownerEntity:getComponent(PhysicCMP.ComponentTypeName)
+                if not ownerPhysicCmp or ownerPhysicCmp:getBodyType_const() ~= 'static' then
+                    return true
+                end
+
+                local shape = fixture:getShape()
+                if not shape then return true end
+
+                local intersects = false
+                if shape.typeOf and shape:typeOf("CircleShape") then
+                    local localX, localY = shape:getPoint()
+                    local worldX, worldY = body:getWorldPoint(localX, localY)
+                    intersects = Geom.circleVsCircle(indicatorX, indicatorY, indicatorRadius, worldX, worldY, shape:getRadius())
+                elseif shape.typeOf and shape:typeOf("PolygonShape") then
+                    local localPoints = { shape:getPoints() }
+                    if #localPoints >= 6 then
+                        local worldPoints = { body:getWorldPoints(unpackValues(localPoints)) }
+                        intersects = Geom.circleVsPolygon(indicatorX, indicatorY, indicatorRadius, worldPoints)
+                    end
+                else
+                    local success, boxMinX, boxMinY, boxMaxX, boxMaxY = pcall(function()
+                        return fixture:getBoundingBox(1)
+                    end)
+                    if success then
+                        intersects = Geom.circleVsAabb(indicatorX, indicatorY, indicatorRadius, boxMinX, boxMinY, boxMaxX, boxMaxY)
+                    end
+                end
+
+                if intersects then
+                    isValid = false
+                    return false
+                end
+
+                return true
+            end)
+        end
+    end
     
     -- Visual Feedback
     -- Green if valid, Red if invalid

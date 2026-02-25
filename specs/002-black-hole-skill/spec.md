@@ -69,6 +69,7 @@ As a player, I want the Black Hole to attract nearby objects so that they are pu
         -   **Release Activation Key**: Trigger spawn attempt.
         -   **Timeout (>10s Real Time)**: Cancel interaction (cleanup Indicator, no spawn).
         -   **Press Cancel Key**: Immediate Cancel (cleanup Indicator, no spawn).
+    -   **Placement Validation (Read-only)**: Interaction Mode MUST NOT drive a full physics simulation that modifies non-Indicator entities or their state. Placement validation should rely on Box2D (love.physics) read-only query interfaces (for example AABB queries via `World:queryBoundingBox`, fixture inspection, or equivalent engine queries) combined with precise geometric checks when needed. Under no circumstances should interaction-time logic call `World:update` (physics step) or otherwise mutate bodies/fixtures; validation must be read-only and side-effect free.
 
 2.  **Input Handling**:
     -   All inputs (Activation 'O', Movement 'WASD', Cancel 'ESC') **MUST** be configurable via `Config.lua` and processed via `UserInteractController`.
@@ -82,6 +83,7 @@ As a player, I want the Black Hole to attract nearby objects so that they are pu
         -   Must be a **Trigger** (Sensor) type `PhysicalCMP` + `TriggerCMP`.
         -   Must detect overlap with other objects to determine "Valid Placement" (currently defaults to "Always Valid" but interface must exist).
         -   **Visual Feedback**: Changes color/state based on validity (e.g., Green=Valid, Red=Invalid).
+        -   **Interaction Mode Note**: Placement overlap detection MUST function while Interaction Mode is active. Preferred approach: use Box2D/love.physics read-only query APIs (AABB queries, fixture iteration) to collect candidate fixtures, then run precise intersection checks (circle-vs-circle, circle-vs-polygon / rect) in code. If a fallback geometric detector is required, implement reusable Rect/Circle vs Rect/Circle intersection helpers and place them under `utils/` for reuse across systems. All validation code MUST be read-only and MUST NOT modify physics state.
 
 4.  **Black Hole Execution**:
     -   **Spawn Logic**: Only spawns if Interaction Mode ends via "Release" AND placement is "Valid".
@@ -116,6 +118,7 @@ As a player, I want the Black Hole to attract nearby objects so that they are pu
 2.  **Time System**:
     -   **Interaction Mode**: The 10s timeout MUST be based on **Real Time** to prevent it from stalling during time stops/slows.
     -   **Black Hole Logic**: The Black Hole's duration (10s) and physics MUST be based on **Game Time** (respecting scale/dilation).
+    -   **Validation Performance**: Placement validation should favor Box2D query primitives (AABB queries) for candidate filtering and only run precise geometric tests on filtered fixtures. Implementations that add pure-Lua geometric tests should place reusable helpers in `utils/` and keep them optimized.
 
 ## Key Entities & Data Models *(optional)*
 
